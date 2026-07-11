@@ -1,7 +1,28 @@
 // Basic global variables
-const Discord = require("discord.js");
-const client = new Discord.Client({
-    intents: ["AutoModerationConfiguration", "AutoModerationExecution", "DirectMessageReactions", "DirectMessageTyping", "DirectMessages", "GuildBans", "GuildEmojisAndStickers", "GuildIntegrations", "GuildInvites", "GuildMembers", "GuildMessageReactions", "GuildMessageTyping", "GuildMessages", "GuildPresences", "GuildScheduledEvents", "GuildVoiceStates", "GuildWebhooks", "Guilds", "MessageContent"],
+const { Client, GatewayIntentBits, Partials } = require("discord.js");
+
+// Use GatewayIntentBits constants. Comment privileged intents if you don't
+// plan to enable them in the Developer Portal.
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildBans,
+        GatewayIntentBits.GuildEmojisAndStickers,
+        GatewayIntentBits.GuildIntegrations,
+        GatewayIntentBits.GuildInvites,
+        // Privileged intents (enable in Developer Portal if needed):
+        // GatewayIntentBits.GuildMembers,
+        // GatewayIntentBits.GuildPresences,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildScheduledEvents,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildWebhooks,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.DirectMessageReactions,
+    ],
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction],
 });
 
 // Fires when bot is online
@@ -11,7 +32,7 @@ client.on("ready", () => {
     client.user.setPresence({
         status: "online"
     });
-    client.user.setActivity("Bot's activity");
+    client.user.setActivity("Connecting The Stars");
     // You can set a custom activity as well
 })
 
@@ -21,13 +42,22 @@ client.on("guildCreate", server => {
 })
 
 // Fires when a member sends a message to chat
-client.on("messageCreate", (message) => {
-    // Console log
-    console.log(message.author.username + "#" + message.author.discriminator + ": " + message.content);
+client.on("messageCreate", async (message) => {
+    // Ignore other bots
+    if (message.author && message.author.bot) return;
 
-    // Example command
-    if (message.content === "!myCommand") {
-        message.reply("Hi there! You've executed my command!");
+    // Safe console log
+    console.log(`${message.author.username}#${message.author.discriminator}: ${message.content || ''}`);
+
+    // Example command (case-insensitive, trimmed)
+    const content = (message.content || '').toLowerCase().trim();
+    if (content === "!mycommand") {
+        try {
+            await message.reply("Hi there! You've executed my command!");
+        } catch (err) {
+            // Fallback if reply fails (e.g., DMs disabled)
+            try { await message.channel.send("Hi there! You've executed my command!"); } catch (e) { /* ignore */ }
+        }
     }
 
     // Your code here...
@@ -41,4 +71,5 @@ client.on("guildMemberAdd", member => {
 });
 
 // LogIn
-client.login("BOT'S TOKEN HERE");
+const config = require('./.config.json');
+client.login(config.token);

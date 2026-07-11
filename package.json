@@ -1,0 +1,23 @@
+{
+  "name": "simple-discord-bot-template-nodejs",
+  "version": "1.0.0",
+  "description": "A simple and easy discord bot template ready to use!",
+  "homepage": "https://github.com/eumermondio/simple-discord-bot-template-nodejs#readme",
+  "bugs": {
+    "url": "https://github.com/eumermondio/simple-discord-bot-template-nodejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eumermondio/simple-discord-bot-template-nodejs.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "discord.js": "^14.26.5"
+  }
+}

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const charSheetCommand = require('./char_sheet');
 
 module.exports = {
   // Load starnet homes to populate choices for the `home` option
@@ -8,25 +9,43 @@ module.exports = {
     const builder = new SlashCommandBuilder()
       .setName('create_specialist')
       .setDescription('Create a new specialist with three attributes.')
-      .addStringOption(option => option.setName('name').setDescription('Specialist name').setRequired(true))
-      .addStringOption(option => option.setName('work').setDescription('Specialist work').setRequired(true));
+      .addStringOption(option => option.setName('name').setDescription('Specialist name').setRequired(true));
 
-    // attempt to load starnet.json and add choices for home
+    const addChoicesFrom = (sourceObj, optionName, description, required, labelFn) => {
+      try {
+        const entries = Array.isArray(sourceObj)
+          ? sourceObj.map(value => [value, value])
+          : sourceObj && typeof sourceObj === 'object'
+            ? Object.entries(sourceObj)
+            : [];
+        const choices = entries.map(([key, val]) => {
+          const value = Array.isArray(sourceObj) ? val : key;
+          return { name: labelFn ? labelFn(key, val) : value, value };
+        }).slice(0, 25);
+        if (choices.length) {
+          builder.addStringOption(opt => opt.setName(optionName).setDescription(description).setRequired(!!required).addChoices(...choices));
+        } else {
+          builder.addStringOption(opt => opt.setName(optionName).setDescription(description).setRequired(!!required));
+        }
+      } catch (e) {
+        builder.addStringOption(opt => opt.setName(optionName).setDescription(description).setRequired(!!required));
+      }
+    };
+
+    let starnet = {};
     try {
       const starnetPath = path.join(__dirname, '../../starnet.json');
       const raw = fs.readFileSync(starnetPath, 'utf8');
-      const starnet = raw.trim() ? JSON.parse(raw) : {};
-      const homes = starnet.homes || {};
-      // Present only the key as the visible choice label; use the key as the value as well
-      const choices = Object.entries(homes).map(([key, val]) => ({ name: key, value: key }));
-      if (choices.length) {
-        builder.addStringOption(option => option.setName('home').setDescription('Specialist home').setRequired(true).addChoices(...choices));
-      } else {
-        builder.addStringOption(option => option.setName('home').setDescription('Specialist home').setRequired(true));
-      }
+      starnet = raw.trim() ? JSON.parse(raw) : {};
     } catch (e) {
-      builder.addStringOption(option => option.setName('home').setDescription('Specialist home').setRequired(true));
+      starnet = {};
     }
+
+    addChoicesFrom(starnet.homes || {}, 'home', 'Specialist home', true, (k) => k);
+    addChoicesFrom(starnet.works || {}, 'work', 'Specialist work', true, (k, v) => `${k} — ${v.Name}`);
+    addChoicesFrom(starnet.startGear || {}, 'startgear', 'StarNet gear', true, (k) => k);
+    addChoicesFrom(starnet.types || {}, 'type', 'Specialist type', true, (k) => k);
+    addChoicesFrom(starnet.zone || {}, 'zone', 'Specialist zone', true, (k) => k);
 
     return builder;
   })(),
@@ -35,6 +54,9 @@ module.exports = {
     const name = interaction.options.getString('name');
     const home = interaction.options.getString('home');
     const work = interaction.options.getString('work');
+    const startgear = interaction.options.getString('startgear');
+    const type = interaction.options.getString('type');
+    const zone = interaction.options.getString('zone'); const body = 6-zone; const mind = zone-1;
 
     const file = path.join(__dirname, '../../player_data.json');
     let db = {};
@@ -45,37 +67,53 @@ module.exports = {
       db = {};
     }
 
-    // preserve any existing entry for this user
-    const existing = db[interaction.user.id] || {};
-
-    // load starnet.json to map the selected home key to its value (the tag)
-    let homeTag = null;
+    let homeTag = null; let workTag = null;
+    let workObject = null;
+    let startGearObject = null;
     try {
       const starnetPath = path.join(__dirname, '../../starnet.json');
       const rawStarnet = fs.readFileSync(starnetPath, 'utf8');
       const starnet = rawStarnet.trim() ? JSON.parse(rawStarnet) : {};
       const homes = starnet.homes || {};
+      const works = starnet.works || {};
       homeTag = homes[home] || null;
+      if (work in works) {
+        workObject = { key: work, ...works[work] };
+        workTag = work; // push the selected work key/name into tags
+      }
+      const startGear = starnet.startGear || {};
+      if (startgear && startgear in startGear) startGearObject = { key: startgear, ...startGear[startgear] };
     } catch (e) {
       homeTag = null;
+      workTag = null;
+      workObject = null;
     }
 
-    // build tags array, pushing the homeTag if present and not already included
-    const tags = Array.isArray(existing.tags) ? existing.tags.slice() : [];
-    if (homeTag && !tags.includes(homeTag)) tags.push(homeTag);
+    const tags = [];
+    if (homeTag) tags.push(homeTag);
+    if (workTag) tags.push(workTag);
+    if (type) tags.push(type);
+
+    const inventory = [];
+    if (workObject) inventory.push(workObject);
+    if (startGearObject) inventory.push(startGearObject);
 
     db[interaction.user.id] = {
-      ...existing,
       name,
       home,
       work,
       tags,
-      updatedAt: new Date().toISOString(),
+      inventory,
+      type,
+      zone,
+      body,
+      mind,
     };
 
     try {
       fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');
-      await interaction.reply({ content: 'Your variables have been saved.', ephemeral: true });
+      // Confirm by showing the saved character sheet
+      await charSheetCommand.execute(interaction);
     } catch (err) {
       console.error('Failed to write player_data.json', err);
       await interaction.reply({ content: 'Failed to save variables.', ephemeral: true });

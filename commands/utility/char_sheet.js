@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -52,9 +52,7 @@ module.exports = {
 
     const zoneFooter = entry.inTheZone ? '\n💫 I N T H E Z O N E 💫' : '';
 
-    const content = `
-${entry.name}
-**Home:** ${entry.home}
+    const description = `**Home:** ${entry.home}
 **Work:** *${entry.work}*
 **Type:** *${entry.type}*
 **Zone:** ${entry.zone} | **Body:** ${entry.body} | **Mind:** ${entry.mind}
@@ -62,27 +60,14 @@ ${entry.name}
 **Inventory:**\n${inventory}
 **Tags:** *${entry.tags?.join(', ') || 'None'}*
 **Capacity:** ${entry.load || 0} / ${entry.capacity || 0}#
-**XP:** ${entry.xp || 0} | **Rank:** ${entry.rank || 1}
-${zoneFooter}
-`
-/*
-Home: Ankhmar
-Work: Science
-Type: Imperious
-Zone: 2 Body: 4 Mind: 1
-Perk:
-Mutated. Redistribute your MIND and BODY 1↺
-Gear:
-Scanner. Scan targets. 1↺ to collect data. 1# 3↺
-Emergency relay. Teleport team to Node. 2# 1↺
-Capacity: 3 / 6#
-Tags: Candor, Science, Imperious
-Rank: 1 XP: 0
-💫 I N T H E Z O N E 💫
-*/
+**XP:** ${entry.xp || 0} | **Rank:** ${entry.rank || 1}${zoneFooter}`;
+
+    const embed = new EmbedBuilder()
+      .setTitle(entry.name)
+      .setDescription(description);
 
     await interaction.reply({
-      content,
+      embeds: [embed],
       ephemeral: false,
     });
   },

@@ -65,7 +65,6 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(entry.name)
       .setDescription(description);
-
     await interaction.reply({
       embeds: [embed],
       ephemeral: false,

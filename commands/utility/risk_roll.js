@@ -2,20 +2,25 @@ const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
-// Try to load player_data.json and extract tags array for the command description
+// Try to load player_data.json and extract tags array and zone for the command description
 let tags = [];
+let zone = null;
 try {
   const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
   const raw = fs.readFileSync(dataPath, 'utf8');
   const parsed = JSON.parse(raw);
   if (Array.isArray(parsed.tags)) {
     tags = parsed.tags;
+    zone = parsed.zone ?? null;
   } else if (parsed && typeof parsed === 'object') {
     const firstEntry = Object.values(parsed).find(entry => Array.isArray(entry.tags));
-    if (firstEntry) tags = firstEntry.tags;
+    if (firstEntry) {
+      tags = firstEntry.tags;
+      zone = firstEntry.zone ?? null;
+    }
   }
 } catch (e) {
-  // If file missing or malformed, leave tags empty
+  // If file missing or malformed, leave tags and zone empty
 }
 
 module.exports = {
@@ -26,11 +31,71 @@ module.exports = {
       option.setName('number')
         .setDescription(`How many tags apply to the situation?: (${tags.join(', ')})`)
         .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('target')
+        .setDescription('Choose the attribute to use for the roll')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Body', value: 'BODY' },
+          { name: 'Mind', value: 'MIND' }
+        )
     ),
 
   async execute(interaction) {
-    const dice = interaction.options.getInteger('number')+1;
-    
-    await interaction.reply({ content: `You want to roll: ${dice}D6`});
+    const number = interaction.options.getInteger('number');
+    const target = interaction.options.getString('target');
+    const dice = number + 1;
+    const zoneValue = Number(zone);
+
+    if (!Number.isFinite(zoneValue)) {
+      await interaction.reply({ content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });
+      return;
+    }
+
+    const rolls = Array.from({ length: dice }, () => Math.floor(Math.random() * 6) + 1);
+    const successCount = rolls.filter(result => {
+      return target === 'BODY'
+        ? result >= zoneValue
+        : result <= zoneValue;
+    }).length;
+
+    const anyExact = rolls.some(r => r === zoneValue);
+    let updatedZone = null;
+    try {
+      const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
+      const raw = fs.readFileSync(dataPath, 'utf8');
+      const db = raw.trim() ? JSON.parse(raw) : {};
+      const userId = interaction.user.id;
+      if (db[userId]) {
+        if (anyExact) {
+          db[userId].inTheZone = true;
+          updatedZone = true;
+        } else if (successCount === 0) {
+          db[userId].inTheZone = false;
+          updatedZone = false;
+        }
+        if (updatedZone !== null) {
+          fs.writeFileSync(dataPath, JSON.stringify(db, null, 2), 'utf8');
+        }
+      }
+    } catch (e) {
+      console.error('Failed to update inTheZone', e);
+    }
+
+    // compute outcome with if/else
+    let outcome;
+    if (successCount >= 2) {
+      outcome = 'SUCCESS';
+    } else if (successCount === 1) {
+      outcome = 'MIXED';
+    } else {
+      outcome = 'FAILURE';
+    }
+
+    let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}.\n${outcome} - Rolls: [${rolls.join(', ')}.]\n`;
+    if (updatedZone === false) replyMsg += 'You are no longer In The Zone.';
+    if (updatedZone === true) replyMsg += 'You are now In The Zone.';
+    await interaction.reply({ content: replyMsg });
   },
 };

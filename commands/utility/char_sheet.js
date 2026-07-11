@@ -36,17 +36,35 @@ module.exports = {
         }).join('\n')
       : 'None';
 
+    const perkEntry = entry.perk;
+    const perkName = typeof perkEntry === 'string'
+      ? perkEntry
+      : perkEntry?.Name || perkEntry?.name || perkEntry?.key || 'None';
+    const perkDescription = typeof perkEntry === 'object' && perkEntry
+      ? perkEntry.Description || perkEntry.description || 'No description available.'
+      : 'No description available.';
+    const perkUses = typeof perkEntry === 'object' && perkEntry && perkEntry.Uses != null
+      ? perkEntry.Uses
+      : null;
+    const perkUsesPart = (perkUses === null || perkUses === -1)
+      ? ''
+      : `, ${perkUses}↺`;
+
+    const zoneFooter = entry.inTheZone ? '\n💫 I N T H E Z O N E 💫' : '';
+
     const content = `
 ${entry.name}
 **Home:** ${entry.home}
 **Work:** *${entry.work}*
 **Type:** *${entry.type}*
-**Zone:** ${entry.zone} **Body:** ${entry.body} **Mind:** ${entry.mind}
-**Perk:** ${entry.perk || 'None'}
+**Zone:** ${entry.zone} | **Body:** ${entry.body} | **Mind:** ${entry.mind}
+**Perk:** __${perkName}__ (${perkDescription}${perkUsesPart})
 **Inventory:**\n${inventory}
 **Tags:** *${entry.tags?.join(', ') || 'None'}*
+**Capacity:** ${entry.load || 0} / ${entry.capacity || 0}#
+**XP:** ${entry.xp || 0} | **Rank:** ${entry.rank || 1}
+${zoneFooter}
 `
-
 /*
 Home: Ankhmar
 Work: Science

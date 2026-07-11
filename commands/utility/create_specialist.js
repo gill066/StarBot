@@ -71,10 +71,11 @@ module.exports = {
     let homeTag = null; let workTag = null;
     let workObject = null;
     let startGearObject = null;
+    let starnet = {};
     try {
       const starnetPath = path.join(__dirname, '../../starnet.json');
       const rawStarnet = fs.readFileSync(starnetPath, 'utf8');
-      const starnet = rawStarnet.trim() ? JSON.parse(rawStarnet) : {};
+      starnet = rawStarnet.trim() ? JSON.parse(rawStarnet) : {};
       const homes = starnet.homes || {};
       const works = starnet.works || {};
       homeTag = homes[home] || null;
@@ -99,6 +100,19 @@ module.exports = {
     if (workObject) inventory.push(workObject);
     if (startGearObject) inventory.push(startGearObject);
 
+    const perkObject = perk && starnet.perks && (perk in starnet.perks)
+      ? { key: perk, ...starnet.perks[perk] }
+      : null;
+
+    const getNumeric = value => Number(value ?? 0) || 0;
+    const inventoryCapChange = inventory.reduce((sum, item) => sum + getNumeric(item?.CapChange), 0);
+    const perkCapChange = getNumeric(perkObject?.CapChange);
+    const inventoryLoad = inventory.reduce((sum, item) => sum + getNumeric(item?.Weight), 0);
+
+// update the player's load and capacity
+    let load = inventoryLoad;
+    let capacity = 6 + inventoryCapChange + perkCapChange;
+// Save the new specialist data to the player_data.json file
     db[interaction.user.id] = {
       name,
       home,
@@ -109,7 +123,12 @@ module.exports = {
       zone,
       body,
       mind,
-      perk
+      perk: perkObject,
+      capacity,
+      load,
+      inTheZone: false,
+      rank: 1,
+      xp: 0
     };
 
     try {

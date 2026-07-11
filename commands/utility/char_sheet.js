@@ -37,13 +37,14 @@ module.exports = {
       : 'None';
 
     const content = `
-${entry.name}\n
-**Home:** ${entry.home}\n
-**Work:** ${entry.work}\n
-**Type:** ${entry.type}\n
-**Zone:** ${entry.zone} **Body:** ${entry.body} **Mind:** ${entry.mind}\n
-**Inventory:**\n${inventory}\n
-**Tags:** ${entry.tags?.join(', ') || 'None'}
+${entry.name}
+**Home:** ${entry.home}
+**Work:** *${entry.work}*
+**Type:** *${entry.type}*
+**Zone:** ${entry.zone} **Body:** ${entry.body} **Mind:** ${entry.mind}
+**Perk:** ${entry.perk || 'None'}
+**Inventory:**\n${inventory}
+**Tags:** *${entry.tags?.join(', ') || 'None'}*
 `
 
 /*

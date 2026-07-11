@@ -29,7 +29,14 @@
     "Patronizing",
     "Reticent"
   ],
-  "startGear": {
+ 
+  "zone": {
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5
+  },
+   "startGear": {
     "Battery Pack": {"Name":"Battery pack","Use":"Refill ↺ on StarNet devices","Weight":1,"Uses":1,"MaxUses":1,"CapChange":0},
     "Ansible Radio": {"Name":"Ansible radio","Use":"Communicate long-distance","Weight":1,"Uses":-1,"MaxUses":-1,"CapChange":0},
     "Bubble Shield": {"Name":"Bubble shield","Use":"Emit temporary forcefield","Weight":2,"Uses":1,"MaxUses":1,"CapChange":0},
@@ -37,10 +44,19 @@
     "Matter Fabricator": {"Name":"Matter fabricator","Use":"Print .fab blueprints","Weight":3,"Uses":2,"MaxUses":2,"CapChange":0},
     "Carry Rig": {"Name":"Carry rig","Use":"Add 3# to carrying capacity","Weight":0,"Uses":-1,"MaxUses":-1,"CapChange":3}
   },
-  "zone": {
-    "2": 2,
-    "3": 3,
-    "4": 4,
-    "5": 5
+  "perks": {
+    "Adaptable": {"Name":"__Adaptable__","Description":"Adjust your ZONE by 1","Uses":1,"MaxUses":1,"CapChange":0},
+    "Brutal": {"Name":"__Brutal__","Description":"Injure or kill someone while unarmed","Uses":1,"MaxUses":1,"CapChange":0},
+    "Determined": {"Name":"__Determined__","Description":"Enter the zone at will","Uses":1,"MaxUses":1,"CapChange":0},
+    "Efficient": {"Name":"__Efficient__","Description":"Use an item without spending its ↺","Uses":1,"MaxUses":1,"CapChange":0},
+    "Empathic": {"Name":"__Empathic__","Description":"Take a mental <injury> to sense intent","Uses":-1,"MaxUses":-1,"CapChange":0},
+    "Focused": {"Name":"__Focused__","Description":"Double XP in the zone until it ends","Uses":1,"MaxUses":1,"CapChange":0},
+    "Hardy": {"Name":"__Hardy__","Description":"Ignore a physical <injury>","Uses":1,"MaxUses":1,"CapChange":0},
+    "Mutated": {"Name":"__Mutated__","Description":"Redistribute your MIND and BODY","Uses":1,"MaxUses":1,"CapChange":0},
+    "Organized": {"Name":"__Organized__","Description":"Halve # of all items of one type","Uses":1,"MaxUses":1,"CapChange":0},
+    "Psychic": {"Name":"__Psychic__","Description":"Roll to merge your mind with another","Uses":-1,"MaxUses":-1,"CapChange":0},
+    "Resourceful": {"Name":"__Resourceful__","Description":"Add an extra 1D6 to a risk roll","Uses":1,"MaxUses":1,"CapChange":0},
+    "Strong": {"Name":"__Strong__","Description":"3# extra CAPACITY. Lift heavy things","Uses":-1,"MaxUses":-1,"CapChange":3},
+    "Stealthy": {"Name":"__Stealthy__","Description":"Knock out an unsuspecting target","Uses":1,"MaxUses":1,"CapChange":0}
   }
 }

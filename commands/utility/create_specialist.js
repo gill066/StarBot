@@ -43,10 +43,10 @@ module.exports = {
 
     addChoicesFrom(starnet.homes || {}, 'home', 'Specialist home', true, (k) => k);
     addChoicesFrom(starnet.works || {}, 'work', 'Specialist work', true, (k, v) => `${k} — ${v.Name}`);
-    addChoicesFrom(starnet.startGear || {}, 'startgear', 'StarNet gear', true, (k) => k);
     addChoicesFrom(starnet.types || {}, 'type', 'Specialist type', true, (k) => k);
     addChoicesFrom(starnet.zone || {}, 'zone', 'Specialist zone', true, (k) => k);
-
+    addChoicesFrom(starnet.startGear || {}, 'startgear', 'StarNet gear', true, (k) => k);
+    addChoicesFrom(starnet.perks || {}, 'perk', 'Specialist perk', true, (k) => k);
     return builder;
   })(),
 
@@ -54,9 +54,10 @@ module.exports = {
     const name = interaction.options.getString('name');
     const home = interaction.options.getString('home');
     const work = interaction.options.getString('work');
-    const startgear = interaction.options.getString('startgear');
     const type = interaction.options.getString('type');
     const zone = interaction.options.getString('zone'); const body = 6-zone; const mind = zone-1;
+    const startgear = interaction.options.getString('startgear');
+    const perk = interaction.options.getString('perk');
 
     const file = path.join(__dirname, '../../player_data.json');
     let db = {};
@@ -108,6 +109,7 @@ module.exports = {
       zone,
       body,
       mind,
+      perk
     };
 
     try {

@@ -123,7 +123,7 @@ module.exports = {
       zone,
       body,
       mind,
-      perk: perkObject,
+      perks: perkObject ? [perkObject] : [],
       capacity,
       load,
       inTheZone: false,

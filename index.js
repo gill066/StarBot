@@ -71,7 +71,6 @@ client.on("messageCreate", async (message) => {
 
 });
 
-
 // Fires when a member join a guild
 client.on("guildMemberAdd", member => {
     // Your code here...

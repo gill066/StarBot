@@ -29,7 +29,7 @@ module.exports = {
 
     let zoneValue = null;
     let userTags = [];
-    const overweight = 0;
+    let overweight = 0;
     try {
       const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
       const raw = fs.readFileSync(dataPath, 'utf8');
@@ -40,11 +40,11 @@ module.exports = {
       if (entry) {
         const capacity = Number(entry.capacity ?? entry.CAPACITY ?? 0);
         const load = Number(entry.load ?? entry.LOAD ?? 0);
-        const overweight = Math.max(load - capacity, 0);
+        overweight = Math.max(load - capacity, 0);
         if (typeof entry.zone !== 'undefined') {
           zoneValue = Number(entry.zone);
         }
-    }
+      }
     } catch (e) {
       console.error('Failed to load player data for risk_roll', e);
     }
@@ -96,7 +96,7 @@ module.exports = {
     }
 
     let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}.
-    Load ${load} Capacity: ${capacity} Overweight ${overweight} Tags applicable ${number}
+    Overweight ${overweight} Tags applicable ${number}
 ${outcome} - Rolls: [${rolls.join(', ')}]
 `;
     if (updatedZone === false) replyMsg += 'You are no longer 💫 I N T H E Z O N E 💫';

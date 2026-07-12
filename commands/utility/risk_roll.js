@@ -2,24 +2,13 @@ const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
-let tags = [];
-try {
-  const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
-  const raw = fs.readFileSync(dataPath, 'utf8');
-  const db = raw.trim() ? JSON.parse(raw) : {};
-  tags = Object.values(db)
-    .flatMap(entry => Array.isArray(entry.tags) ? entry.tags : [])
-    .filter((tag, index, arr) => tag && arr.indexOf(tag) === index);
-} catch (e) {
-  // ignore missing or malformed player data
-}
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('risk_roll')
-    .setDescription(`How many tags apply to the situation?${tags.length ? ` (tags: ${tags.join(', ')})` : ''}`)
+    .setDescription('Roll risk with BODY or MIND against your current zone. Your tags appear in the result.')
     .addIntegerOption(option =>
       option.setName('number')
-        .setDescription(`How many tags apply to the situation?${tags.length ? ` Available tags: ${tags.join(', ')}` : ''}`)
+        .setDescription('How many tags apply to the situation?')
         .setRequired(true)
     )
     .addStringOption(option =>
@@ -38,12 +27,14 @@ module.exports = {
     const dice = number + 1;
 
     let zoneValue = null;
+    let userTags = [];
     try {
       const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
       const raw = fs.readFileSync(dataPath, 'utf8');
       const db = raw.trim() ? JSON.parse(raw) : {};
       const userId = interaction.user.id;
       const entry = db[userId];
+      userTags = entry && Array.isArray(entry.tags) ? entry.tags : [];
       if (entry && typeof entry.zone !== 'undefined') {
         zoneValue = Number(entry.zone);
       }
@@ -96,9 +87,11 @@ module.exports = {
       outcome = 'FAILURE';
     }
 
-    let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}.\n${outcome} - Rolls: [${rolls.join(', ')}.]\n`;
+    let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}.
+${userTags.length ? `Your tags: ${userTags.join(', ')}\n` : 'You have no tags.\n'}${outcome} - Rolls: [${rolls.join(', ')}.]
+`;
     if (updatedZone === false) replyMsg += 'You are no longer In The Zone.';
     if (updatedZone === true) replyMsg += 'You are now In The Zone.';
-    await interaction.reply({ content: replyMsg });
+await interaction.reply({ content: replyMsg });
   },
 };

@@ -9,7 +9,7 @@ module.exports = {
   data: (() => {
     const builder = new SlashCommandBuilder()
       .setName('create_specialist')
-      .setDescription('Create a new specialist with three attributes.')
+      .setDescription('Create a new StarNet specialist')
       .addStringOption(option => option.setName('name').setDescription('Specialist name').setRequired(true));
 
     const addChoicesFrom = (sourceObj, optionName, description, required, labelFn) => {

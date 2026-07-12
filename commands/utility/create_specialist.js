@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const charSheetCommand = require('./char_sheet');
+const { replySafely } = require('../../utils/interaction');
 
 module.exports = {
   // Load starnet homes to populate choices for the `home` option
@@ -137,7 +138,7 @@ module.exports = {
       await charSheetCommand.execute(interaction);
     } catch (err) {
       console.error('Failed to write player_data.json', err);
-      await interaction.reply({ content: 'Failed to save variables.', ephemeral: true });
+      await replySafely(interaction, { content: 'Failed to save variables.', ephemeral: true });
     }
   },
 };

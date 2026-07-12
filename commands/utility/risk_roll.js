@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { replySafely } = require('../../utils/interaction');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -39,8 +40,7 @@ module.exports = {
       if (entry) {
         const capacity = Number(entry.capacity ?? entry.CAPACITY ?? 0);
         const load = Number(entry.load ?? entry.LOAD ?? 0);
-        const overweight = Math.min(capacity - load, 0);
-        console.log(overweight);
+        const overweight = Math.max(load - capacity, 0);
         if (typeof entry.zone !== 'undefined') {
           zoneValue = Number(entry.zone);
         }
@@ -48,13 +48,10 @@ module.exports = {
     } catch (e) {
       console.error('Failed to load player data for risk_roll', e);
     }
-    console.log(overweight);
-    const dice = (number + 1)
-    dice = dice + overweight;
-    dice = Math.min(dice, 1); // roll at least 1 die, even if overweight is negative
+    const dice = (number + 1 - overweight);
 
     if (!Number.isFinite(zoneValue)) {
-      await interaction.reply({ content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });
+      await replySafely(interaction, { content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });
       return;
     }
 
@@ -103,6 +100,6 @@ ${outcome} - Rolls: [${rolls.join(', ')}]
 `;
     if (updatedZone === false) replyMsg += 'You are no longer 💫 I N T H E Z O N E 💫';
     if (updatedZone === true) replyMsg += 'You are now 💫 I N T H E Z O N E 💫';
-    await interaction.reply({ content: replyMsg });
+    await replySafely(interaction, { content: replyMsg });
   }
 };

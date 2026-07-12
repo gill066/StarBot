@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const { replySafely } = require('../../utils/interaction');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -19,7 +20,7 @@ module.exports = {
 
     const entry = db[interaction.user.id];
     if (!entry) {
-      await interaction.reply({ content: 'No variables found for you. Create a specialist first.', ephemeral: true });
+      await replySafely(interaction, { content: 'No variables found for you. Create a specialist first.', ephemeral: true });
       return;
     }
 
@@ -61,7 +62,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(entry.name)
       .setDescription(description);
-    await interaction.reply({
+    await replySafely(interaction, {
       embeds: [embed],
       ephemeral: false,
     });

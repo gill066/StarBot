@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const fs = require('fs').promises;
 const path = require('path');
+const { replySafely } = require('../../utils/interaction');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,10 +27,10 @@ module.exports = {
       playerData[userId].xp = currentXp + amount;
       await fs.writeFile(filePath, JSON.stringify(playerData, null, 2), 'utf8');
 
-      await interaction.reply(`Added ${amount} XP. New total is ${playerData[userId].xp}.`);
+      await replySafely(interaction, `Added ${amount} XP. New total is ${playerData[userId].xp}.`);
     } catch (error) {
       console.error('Error updating XP:', error);
-      await interaction.reply({
+      await replySafely(interaction, {
         content: 'There was an error updating the XP value.',
         ephemeral: true,
       });

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const { replySafely } = require('../../utils/interaction');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -72,10 +73,10 @@ module.exports = {
 
     try {
       fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');
-      await interaction.reply({ content: `Added item to your inventory. New load: ${db[userId].load}`, ephemeral: true });
+      await replySafely(interaction, { content: `Added item to your inventory. New load: ${db[userId].load}`, ephemeral: true });
     } catch (err) {
       console.error('Failed to write player_data.json', err);
-      await interaction.reply({ content: `Failed to add item.`, ephemeral: true });
+      await replySafely(interaction, { content: `Failed to add item.`, ephemeral: true });
     }
   },
 

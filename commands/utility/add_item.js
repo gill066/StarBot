@@ -27,7 +27,7 @@ module.exports = {
     .addIntegerOption(option =>
       option
         .setName('uses')
-        .setDescription('Item uses')
+        .setDescription('Item uses (-1 if usage is unlimited)')
         .setRequired(true)
     ),
 

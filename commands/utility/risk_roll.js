@@ -90,8 +90,8 @@ module.exports = {
     let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}.
 ${outcome} - Rolls: [${rolls.join(', ')}.]
 `;
-    if (updatedZone === false) replyMsg += 'You are no longer In The Zone.';
-    if (updatedZone === true) replyMsg += 'You are now In The Zone.';
+    if (updatedZone === false) replyMsg += 'You are no longer 💫 I N T H E Z O N E 💫';
+    if (updatedZone === true) replyMsg += 'You are now 💫 I N T H E Z O N E 💫';
     await interaction.reply({ content: replyMsg });
   }
 };

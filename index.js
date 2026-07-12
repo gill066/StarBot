@@ -29,8 +29,8 @@ const client = new Client({
 });
 
 // LogIn
-const config = require('./.config.json');
-client.login(config.token);
+require('dotenv').config();
+client.login(process.env.TOKEN);
 
 // Fires when bot is online
 client.on("ready", () => {

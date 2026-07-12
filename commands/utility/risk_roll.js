@@ -47,7 +47,7 @@ module.exports = {
     } catch (e) {
       console.error('Failed to load player data for risk_roll', e);
     }
-    const dice = number + 1 + overweight; // add 1 for the base roll, and any overweight penalty
+    const dice = Math.max(number + 1 + overweight, 1); // add 1 for the base roll, and any overweight penalty
 
     if (!Number.isFinite(zoneValue)) {
       await interaction.reply({ content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });

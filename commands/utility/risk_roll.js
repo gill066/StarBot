@@ -49,6 +49,7 @@ module.exports = {
       console.error('Failed to load player data for risk_roll', e);
     }
     const dice = (number + 1 - overweight);
+    console.log(overweight);
 
     if (!Number.isFinite(zoneValue)) {
       await replySafely(interaction, { content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });

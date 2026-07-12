@@ -50,8 +50,8 @@ module.exports = {
     }
     console.log(overweight);
     const dice = (number + 1)
-    const dice = dice + overweight;
-    const dice = Math.min(dice, 1); // roll at least 1 die, even if overweight is negative
+    dice = dice + overweight;
+    dice = Math.min(dice, 1); // roll at least 1 die, even if overweight is negative
 
     if (!Number.isFinite(zoneValue)) {
       await interaction.reply({ content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });

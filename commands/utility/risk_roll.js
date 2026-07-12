@@ -95,8 +95,7 @@ module.exports = {
       outcome = 'FAILURE';
     }
 
-    let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}.
-    Overweight ${overweight} Tags applicable ${number}
+    let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}. (Overweight penalty: ${overweight}, tag bonus: ${number})
 ${outcome} - Rolls: [${rolls.join(', ')}]
 `;
     if (updatedZone === false) replyMsg += 'You are no longer 💫 I N T H E Z O N E 💫';

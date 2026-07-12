@@ -2,13 +2,25 @@ const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
+let tags = [];
+try {
+  const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
+  const raw = fs.readFileSync(dataPath, 'utf8');
+  const db = raw.trim() ? JSON.parse(raw) : {};
+  tags = Object.values(db)
+    .flatMap(entry => Array.isArray(entry.tags) ? entry.tags : [])
+    .filter((tag, index, arr) => tag && arr.indexOf(tag) === index);
+} catch (e) {
+  // ignore missing or malformed player data
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('risk_roll')
-    .setDescription('Roll risk with BODY or MIND against your current zone')
+    .setDescription(`How many tags apply to the situation?${tags.length ? ` (tags: ${tags.join(', ')})` : ''}`)
     .addIntegerOption(option =>
       option.setName('number')
-        .setDescription('How many tags apply to the situation?')
+        .setDescription(`How many tags apply to the situation?${tags.length ? ` Available tags: ${tags.join(', ')}` : ''}`)
         .setRequired(true)
     )
     .addStringOption(option =>

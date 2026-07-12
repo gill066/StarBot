@@ -2,34 +2,13 @@ const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
-// Try to load player_data.json and extract tags array and zone for the command description
-let tags = [];
-let zone = null;
-try {
-  const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
-  const raw = fs.readFileSync(dataPath, 'utf8');
-  const parsed = JSON.parse(raw);
-  if (Array.isArray(parsed.tags)) {
-    tags = parsed.tags;
-    let zone = parsed.zone ?? null;
-  } else if (parsed && typeof parsed === 'object') {
-    const firstEntry = Object.values(parsed).find(entry => Array.isArray(entry.tags));
-    if (firstEntry) {
-      tags = firstEntry.tags;
-      let zone = firstEntry.zone ?? null;
-    }
-  }
-} catch (e) {
-  // If file missing or malformed, leave tags and zone empty
-}
-
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('risk_roll')
-    .setDescription(`How many tags apply to the situation?: (${tags.join(', ')})`)
+    .setDescription('Roll risk with BODY or MIND against your current zone')
     .addIntegerOption(option =>
       option.setName('number')
-        .setDescription(`How many tags apply to the situation?: (${tags.join(', ')})`)
+        .setDescription('How many tags apply to the situation?')
         .setRequired(true)
     )
     .addStringOption(option =>
@@ -46,7 +25,20 @@ module.exports = {
     const number = interaction.options.getInteger('number');
     const target = interaction.options.getString('target');
     const dice = number + 1;
-    const zoneValue = Number(zone);
+
+    let zoneValue = null;
+    try {
+      const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
+      const raw = fs.readFileSync(dataPath, 'utf8');
+      const db = raw.trim() ? JSON.parse(raw) : {};
+      const userId = interaction.user.id;
+      const entry = db[userId];
+      if (entry && typeof entry.zone !== 'undefined') {
+        zoneValue = Number(entry.zone);
+      }
+    } catch (e) {
+      console.error('Failed to load player data for risk_roll', e);
+    }
 
     if (!Number.isFinite(zoneValue)) {
       await interaction.reply({ content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });

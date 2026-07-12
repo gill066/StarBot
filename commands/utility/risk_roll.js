@@ -96,7 +96,7 @@ module.exports = {
     }
 
     let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}.
-    Overweight ${overweight} Tags applicable ${number}
+    Load ${load} Capacity: ${capacity} Overweight ${overweight} Tags applicable ${number}
 ${outcome} - Rolls: [${rolls.join(', ')}]
 `;
     if (updatedZone === false) replyMsg += 'You are no longer 💫 I N T H E Z O N E 💫';

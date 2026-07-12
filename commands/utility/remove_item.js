@@ -33,14 +33,26 @@ module.exports = {
     const playerData = loadPlayerData();
     const player = playerData[interaction.user.id];
     const inventory = Array.isArray(player?.inventory) ? player.inventory : [];
-    const focused = interaction.options.getFocused().toString().toLowerCase();
+    const focusedRaw = interaction.options.getFocused();
+    const focused = (focusedRaw === undefined || focusedRaw === null) ? '' : String(focusedRaw).toLowerCase();
 
     const choices = inventory
-      .filter((item) => item.toString().toLowerCase().includes(focused))
+      .map((item) => String(item))
+      .filter((itemStr) => itemStr.toLowerCase().includes(focused))
       .slice(0, 25)
-      .map((item) => ({ name: item.toString(), value: item.toString() }));
+      .map((itemStr) => {
+        // Ensure Discord limits: name max 100 chars
+        const name = itemStr.length > 100 ? itemStr.slice(0, 100) : itemStr;
+        return { name, value: itemStr };
+      });
 
-    await interaction.respond(choices);
+    try {
+      await interaction.respond(choices);
+    } catch (err) {
+      console.error('Failed to respond to autocomplete for remove_item:', err);
+      // best-effort: respond with empty choices to avoid client-side error
+      try { await interaction.respond([]); } catch (e) {}
+    }
   },
 
   async execute(interaction) {

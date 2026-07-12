@@ -29,7 +29,7 @@ module.exports = {
 
     let zoneValue = null;
     let userTags = [];
-    const overweight = 0;
+    const overweight;
     try {
       const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
       const raw = fs.readFileSync(dataPath, 'utf8');

@@ -24,23 +24,30 @@ module.exports = {
   async execute(interaction) {
     const number = interaction.options.getInteger('number');
     const target = interaction.options.getString('target');
-    const dice = number + 1;
+    
 
     let zoneValue = null;
     let userTags = [];
+    const overweight = 0;
     try {
       const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
       const raw = fs.readFileSync(dataPath, 'utf8');
       const db = raw.trim() ? JSON.parse(raw) : {};
       const userId = interaction.user.id;
-
       const entry = db[userId];
-      if (entry && typeof entry.zone !== 'undefined') {
-        zoneValue = Number(entry.zone);
-      }
+
+      if (entry) {
+        const capacity = Number(entry.capacity ?? entry.CAPACITY ?? 0);
+        const load = Number(entry.load ?? entry.LOAD ?? 0);
+        const overweight = Math.min(capacity - load, 0);
+        if (typeof entry.zone !== 'undefined') {
+          zoneValue = Number(entry.zone);
+        }
+    }
     } catch (e) {
       console.error('Failed to load player data for risk_roll', e);
     }
+    const dice = number + 1 + overweight; // add 1 for the base roll, and any overweight penalty
 
     if (!Number.isFinite(zoneValue)) {
       await interaction.reply({ content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });

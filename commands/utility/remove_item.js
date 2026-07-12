@@ -36,8 +36,26 @@ module.exports = {
     const focusedRaw = interaction.options.getFocused();
     const focused = (focusedRaw === undefined || focusedRaw === null) ? '' : String(focusedRaw).toLowerCase();
 
+    // Map inventory entries to display names. Prefer the item's `Name` property,
+    // fall back to `name` or to a safe string coercion. This avoids showing
+    // "[object Object]" when inventory stores objects.
+    const nameForItem = (item) => {
+      if (item && typeof item === 'object') {
+        // accept both capitalized `Name` and lowercase `name`
+        if (typeof item.Name === 'string' && item.Name.length > 0) return item.Name;
+        if (typeof item.name === 'string' && item.name.length > 0) return item.name;
+        // Last resort: JSON.stringify a simple object, otherwise toString
+        try {
+          return JSON.stringify(item);
+        } catch (e) {
+          return String(item);
+        }
+      }
+      return String(item);
+    };
+
     const choices = inventory
-      .map((item) => String(item))
+      .map((item) => nameForItem(item))
       .filter((itemStr) => itemStr.toLowerCase().includes(focused))
       .slice(0, 25)
       .map((itemStr) => {

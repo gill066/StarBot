@@ -11,12 +11,12 @@ try {
   const parsed = JSON.parse(raw);
   if (Array.isArray(parsed.tags)) {
     tags = parsed.tags;
-    zone = parsed.zone ?? null;
+    let zone = parsed.zone ?? null;
   } else if (parsed && typeof parsed === 'object') {
     const firstEntry = Object.values(parsed).find(entry => Array.isArray(entry.tags));
     if (firstEntry) {
       tags = firstEntry.tags;
-      zone = firstEntry.zone ?? null;
+      let zone = firstEntry.zone ?? null;
     }
   }
 } catch (e) {

@@ -13,7 +13,6 @@ try {
 } catch (e) {
   // ignore missing or malformed player data
 }
-
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('risk_roll')

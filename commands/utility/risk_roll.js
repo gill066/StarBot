@@ -40,6 +40,7 @@ module.exports = {
         const capacity = Number(entry.capacity ?? entry.CAPACITY ?? 0);
         const load = Number(entry.load ?? entry.LOAD ?? 0);
         const overweight = Math.min(capacity - load, 0);
+        console.log(overweight);
         if (typeof entry.zone !== 'undefined') {
           zoneValue = Number(entry.zone);
         }
@@ -47,6 +48,7 @@ module.exports = {
     } catch (e) {
       console.error('Failed to load player data for risk_roll', e);
     }
+    console.log(overweight);
     const dice = Math.max(number + 1 + overweight, 1); // add 1 for the base roll, and any overweight penalty
 
     if (!Number.isFinite(zoneValue)) {

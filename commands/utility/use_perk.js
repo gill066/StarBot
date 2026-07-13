@@ -148,8 +148,8 @@ module.exports = {
         savePlayerData(freshData.file, freshDb);
 
         await btnInteraction.reply({
-          content: `✅ ZONE adjusted successfully! **${targetChar.name}** is now at **ZONE ${targetChar.zone}** (BODY: ${targetChar.body} | MIND: ${targetChar.mind}).`,
-          ephemeral: true
+          content: `${targetChar.name}'s ZONE is now ${targetChar.zone}.`,
+          ephemeral: false
         });
       });
 

@@ -109,7 +109,7 @@ module.exports = {
     try {
       fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');
       await replySafely(interaction, { 
-        content: `Added **${name}**item to ${activeCharacter.name}'s inventory. New load: ${activeCharacter.load}`, 
+        content: `Added **${name}** to ${activeCharacter.name}'s inventory. New load: ${activeCharacter.load}`, 
         ephemeral: false 
       });
     } catch (err) {

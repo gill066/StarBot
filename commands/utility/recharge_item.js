@@ -74,7 +74,7 @@ module.exports = {
     item.Uses = item.MaxUses ?? item.Uses;
     savePlayerData(file, db);
 
-    await replySafely(interaction, { content: `Recharged **${item.Name}** for **${activeCharacter.name}**. Uses are now ${item.Uses}.`, ephemeral: true });
+    await replySafely(interaction, { content: `${activeCharacter.name}'s **${item.Name}** has been recharged. It now has ${item.Uses}↺.`, ephemeral: false });
   },
 
   async autocomplete(interaction) {

@@ -94,7 +94,7 @@ module.exports = {
     recalculateInventoryStats(db, userId);
     savePlayerData(file, db);
 
-    await replySafely(interaction, { content: `Removed **${removedItem?.Name || name}** from **${activeCharacter.name}**'s inventory. New load: ${activeCharacter.load}`, ephemeral: true });
+    await replySafely(interaction, { content: `${activeCharacter.name}'s **${removedItem?.Name || name}** has been removed. New load: ${activeCharacter.load}`, ephemeral: false });
   },
 
   async autocomplete(interaction) {

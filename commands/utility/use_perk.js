@@ -89,7 +89,16 @@ module.exports = {
     }
 
     const cleanPerkName = (perk.Name || perk.key || '').replace(/__/g, '').toLowerCase();
+// Clean the perk name for processing (lowercase and trim whitespace)
+const cleanPerkName = String(perkName || '').toLowerCase().trim();
 
+if (cleanPerkName === 'resourceful') {
+  await replySafely(interaction, {
+    content: 'ℹ️ **Resourceful** is an automated perk. It can only be triggered via a button prompt right after you make a `/risk_roll` that results in a **MIXED** or **FAILURE** outcome.',
+    ephemeral: true
+  });
+  return; // Stop execution so they can't manually activate it here
+}
     // --- TRIGGER FOR "DETERMINED" ---
     if (cleanPerkName === 'determined') {
       activeCharacter.inTheZone = true;

@@ -69,6 +69,35 @@ module.exports = {
       db = {};
     }
 
+    // --- NEW MULTI-CHARACTER PREPARATION & LIMIT CHECK ---
+    const userId = interaction.user.id;
+    
+    // Initialize base user profile if empty
+    if (!db[userId]) {
+      db[userId] = {
+        activeIndex: 0,
+        characters: []
+      };
+    }
+
+    // Migrate old legacy single-character format to the new structure automatically
+    if (db[userId].name && !db[userId].characters) {
+      const legacyCharacter = { ...db[userId] };
+      db[userId] = {
+        activeIndex: 0,
+        characters: [legacyCharacter]
+      };
+    }
+
+    // Verify player hasn't bypassed the 5-character boundary limits
+    if (db[userId].characters.length >= 5) {
+      return await replySafely(interaction, { 
+        content: '❌ You reached the **maximum limit of 5 specialists**. Delete one before creating another!', 
+        ephemeral: true 
+      });
+    }
+    // ----------------------------------------------------
+
     let homeTag = null; let workTag = null;
     let workObject = null;
     let startGearObject = null;
@@ -110,11 +139,12 @@ module.exports = {
     const perkCapChange = getNumeric(perkObject?.CapChange);
     const inventoryLoad = inventory.reduce((sum, item) => sum + getNumeric(item?.Weight), 0);
 
-// update the player's load and capacity
+    // update the player's load and capacity
     let load = inventoryLoad;
     let capacity = 6 + inventoryCapChange + perkCapChange;
-// Save the new specialist data to the player_data.json file
-    db[interaction.user.id] = {
+
+    // --- NEW CHARACTER PACKAGING ---
+    const newCharacter = {
       name,
       home,
       work,
@@ -131,6 +161,11 @@ module.exports = {
       rank: 1,
       xp: 0
     };
+
+    // Save into the user array structure and set pointer to index position
+    db[userId].characters.push(newCharacter);
+    db[userId].activeIndex = db[userId].characters.length - 1;
+    // -------------------------------
 
     try {
       fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');

@@ -35,39 +35,77 @@ module.exports = {
     const name = interaction.options.getString('name');
     const { file, db } = getPlayerData();
     const userId = interaction.user.id;
+    let userEntry = db[userId];
 
-    if (!db[userId] || !Array.isArray(db[userId].inventory)) {
-      await replySafely(interaction, { content: 'You do not have an inventory yet.', ephemeral: true });
+    if (!userEntry) {
+      await replySafely(interaction, { content: 'No variables found for you. Create a specialist first.', ephemeral: true });
       return;
     }
 
-    const item = db[userId].inventory.find(entry => (entry?.Name || '').toLowerCase() === String(name || '').toLowerCase());
+    // --- STRUCTURAL MIGRATION FOR LEGACY SINGLE CHARACTERS ---
+    if (userEntry.name && !userEntry.characters) {
+      const legacyCharacter = { ...userEntry };
+      db[userId] = {
+        activeIndex: 0,
+        characters: [legacyCharacter]
+      };
+      userEntry = db[userId];
+    }
+
+    if (!userEntry.characters || userEntry.characters.length === 0) {
+      await replySafely(interaction, { content: 'You do not have any active specialist profiles.', ephemeral: true });
+      return;
+    }
+
+    // Target the current active character's profile record
+    const activeCharacter = userEntry.characters[userEntry.activeIndex];
+
+    if (!activeCharacter || !Array.isArray(activeCharacter.inventory)) {
+      await replySafely(interaction, { content: 'Your active specialist does not have an inventory yet.', ephemeral: true });
+      return;
+    }
+
+    const item = activeCharacter.inventory.find(entry => (entry?.Name || '').toLowerCase() === String(name || '').toLowerCase());
     if (!item) {
-      await replySafely(interaction, { content: `You do not have an item named ${name}.`, ephemeral: true });
+      await replySafely(interaction, { content: `Your active specialist (**${activeCharacter.name}**) does not have an item named ${name}.`, ephemeral: true });
       return;
     }
 
     const remainingUses = Number(item.Uses ?? 0);
     if (remainingUses === 0) {
-      await replySafely(interaction, { content: `${item.Name} has no uses left.`, ephemeral: true });
+      await replySafely(interaction, { content: `**${item.Name}** has no uses left.`, ephemeral: true });
       return;
     }
 
     if (remainingUses > 0) {
       item.Uses = remainingUses - 1;
     } else if (remainingUses < 0) {
-      item.Uses = -1;
+      item.Uses = -1; // Keep unlimited value preserved
     }
 
     savePlayerData(file, db);
-    await replySafely(interaction, { content: `Used ${item.Name}. ${item.Use}`, ephemeral: true });
+    
+    const usesAlert = item.Uses < 0 ? '(Unlimited)' : `(${item.Uses} left)`;
+    await replySafely(interaction, { content: `**${activeCharacter.name}** used **${item.Name}** ${usesAlert}.\n*${item.Use}*`, ephemeral: false });
   },
 
   async autocomplete(interaction) {
     const focusedValue = interaction.options.getFocused();
     const { db } = getPlayerData();
     const userId = interaction.user.id;
-    const inventory = Array.isArray(db[userId]?.inventory) ? db[userId].inventory : [];
+    const userEntry = db[userId];
+
+    let inventory = [];
+
+    // Safely look up character items within autocomplete parsing boundaries
+    if (userEntry) {
+      if (Array.isArray(userEntry.characters) && userEntry.characters[userEntry.activeIndex]) {
+        inventory = userEntry.characters[userEntry.activeIndex].inventory || [];
+      } else if (userEntry.name && Array.isArray(userEntry.inventory)) {
+        // Fallback option mapping context for unmigrated single characters
+        inventory = userEntry.inventory;
+      }
+    }
 
     const choices = inventory
       .filter(entry => entry?.Name)
@@ -78,3 +116,4 @@ module.exports = {
     await interaction.respond(choices);
   },
 };
+ 

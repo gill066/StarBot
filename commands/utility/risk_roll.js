@@ -25,35 +25,57 @@ module.exports = {
   async execute(interaction) {
     const number = interaction.options.getInteger('number');
     const target = interaction.options.getString('target');
-    
+    const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
+    const userId = interaction.user.id;
 
-    let zoneValue = null;
-    let userTags = [];
-    let overweight = 0;
+    let db = {};
     try {
-      const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
       const raw = fs.readFileSync(dataPath, 'utf8');
-      const db = raw.trim() ? JSON.parse(raw) : {};
-      const userId = interaction.user.id;
-      const entry = db[userId];
-
-      if (entry) {
-        const capacity = Number(entry.capacity ?? entry.CAPACITY ?? 0);
-        const load = Number(entry.load ?? entry.LOAD ?? 0);
-        overweight = Math.max(load - capacity, 0);
-        if (typeof entry.zone !== 'undefined') {
-          zoneValue = Number(entry.zone);
-        }
-      }
+      db = raw.trim() ? JSON.parse(raw) : {};
     } catch (e) {
       console.error('Failed to load player data for risk_roll', e);
+      db = {};
     }
-    const dice = Math.max(1 + number - overweight, 1); // Ensure at least 1 die is rolled even if overweight
 
-    if (!Number.isFinite(zoneValue)) {
-      await replySafely(interaction, { content: 'Zone is not set or is invalid. Please create a specialist first.', ephemeral: true });
+    // 1. Structural Migration / Setup Check
+    if (!db[userId]) {
+      db[userId] = { activeIndex: 0, characters: [] };
+    }
+
+    if (db[userId].name && !db[userId].characters) {
+      const legacyCharacter = { ...db[userId] };
+      db[userId] = {
+        activeIndex: 0,
+        characters: [legacyCharacter]
+      };
+    }
+
+    if (!db[userId].characters || db[userId].characters.length === 0) {
+      await replySafely(interaction, { content: 'You do not have any active specialist profiles. Please create a specialist first.', ephemeral: true });
       return;
     }
+
+    // 2. Safely capture the active character profile reference
+    const activeCharacter = db[userId].characters[db[userId].activeIndex];
+
+    let zoneValue = null;
+    let overweight = 0;
+
+    const capacity = Number(activeCharacter.capacity ?? activeCharacter.CAPACITY ?? 0);
+    const load = Number(activeCharacter.load ?? activeCharacter.LOAD ?? 0);
+    overweight = Math.max(load - capacity, 0);
+    
+    if (typeof activeCharacter.zone !== 'undefined') {
+      zoneValue = Number(activeCharacter.zone);
+    }
+
+    if (!Number.isFinite(zoneValue)) {
+      await replySafely(interaction, { content: 'Zone is not set or is invalid for your active character.', ephemeral: true });
+      return;
+    }
+
+    // Dice math adjustments
+    const dice = Math.max(1 + number - overweight, 1); // Ensure at least 1 die is rolled even if overweight
 
     const rolls = Array.from({ length: dice }, () => Math.floor(Math.random() * 6) + 1);
     const successCount = rolls.filter(result => {
@@ -64,61 +86,54 @@ module.exports = {
 
     const anyExact = rolls.some(r => r === zoneValue);
     
-    // ... [Your code up to the success count calculation] ...
+    // 3. Update character fields securely on the nested instance
+    let updatedZone = null;
+    let zoneChanged = false; 
 
-let updatedZone = null;
-let zoneChanged = false; // Added to track actual state changes
+    // Track previous condition safely
+    const wasInTheZone = activeCharacter.inTheZone;
 
-try {
-    const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
-    const raw = fs.readFileSync(dataPath, 'utf8');
-    const db = raw.trim() ? JSON.parse(raw) : {};
-    const userId = interaction.user.id;
+    if (anyExact) {
+        activeCharacter.inTheZone = true;
+        updatedZone = true;
+    } else if (successCount === 0) {
+        activeCharacter.inTheZone = false;
+        updatedZone = false;
+    }
 
-    if (db[userId]) {
-        // Track the previous state
-        const wasInTheZone = db[userId].inTheZone;
+    // Determine if structural modifications need saving
+    if (updatedZone !== null && wasInTheZone !== updatedZone) {
+        zoneChanged = true;
+    }
 
-        if (anyExact) {
-            db[userId].inTheZone = true;
-            updatedZone = true;
-        } else if (successCount === 0) {
-            db[userId].inTheZone = false;
-            updatedZone = false;
-        }
+    // Always commit state modifications (or initial array structures if migrated)
+    try {
+        fs.writeFileSync(dataPath, JSON.stringify(db, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Failed to update player database state variables', e);
+    }
 
-        // Check if the state actually changed
-        if (updatedZone !== null && wasInTheZone !== updatedZone) {
-            zoneChanged = true;
-            fs.writeFileSync(dataPath, JSON.stringify(db, null, 2), 'utf8');
+    // compute outcome outcome text configurations
+    let outcome;
+    if (successCount >= 2) {
+        outcome = 'SUCCESS';
+    } else if (successCount === 1) {
+        outcome = 'MIXED';
+    } else {
+        outcome = 'FAILURE';
+    }
+
+    let replyMsg = `**${activeCharacter.name}** is rolling ${dice}D6 against ZONE ${zoneValue} using ${target}. (Load penalty: ${overweight}, tag bonus: ${number})\n${outcome} - Rolls: [${rolls.join(', ')}]`;
+
+    // Append localized strings dynamically if states shifted
+    if (zoneChanged) {
+        if (updatedZone === false) {
+            replyMsg += `\nYou are no longer 💫 I N T H E Z O N E 💫`;
+        } else if (updatedZone === true) {
+            replyMsg += `\nYou are now 💫 I N T H E Z O N E 💫`;
         }
     }
-} catch (e) {
-    console.error('Failed to update inTheZone', e);
-}
 
-// compute outcome with if/else
-let outcome;
-if (successCount >= 2) {
-    outcome = 'SUCCESS';
-} else if (successCount === 1) {
-    outcome = 'MIXED';
-} else {
-    outcome = 'FAILURE';
-}
-
-let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}. (Load penalty: ${overweight}, tag bonus: ${number})\n${outcome} - Rolls: [${rolls.join(', ')}]`;
-
-// Only append the message if the state changed
-if (zoneChanged) {
-    if (updatedZone === false) {
-        replyMsg += ` You are not 💫 I N T H E Z O N E 💫`;
-    } else if (updatedZone === true) {
-        replyMsg += ` You are now 💫 I N T H E Z O N E 💫`;
-    }
-}
-
-await replySafely(interaction, { content: replyMsg });
-
+    await replySafely(interaction, { content: replyMsg });
   }
 };

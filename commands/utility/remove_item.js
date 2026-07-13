@@ -19,18 +19,22 @@ function savePlayerData(file, db) {
   fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');
 }
 
+// Rewritten helper targeting the active character object profile fields directly
 function recalculateInventoryStats(db, userId) {
-  if (!db[userId]) db[userId] = {};
-  if (!Array.isArray(db[userId].inventory)) db[userId].inventory = [];
+  const userEntry = db[userId];
+  if (!userEntry || !userEntry.characters || !userEntry.characters[userEntry.activeIndex]) return;
+
+  const activeCharacter = userEntry.characters[userEntry.activeIndex];
+  if (!Array.isArray(activeCharacter.inventory)) activeCharacter.inventory = [];
 
   const getNumeric = value => Number(value ?? 0) || 0;
-  const inventoryLoad = db[userId].inventory.reduce((sum, item) => sum + getNumeric(item?.Weight), 0);
-  const inventoryCapChange = db[userId].inventory.reduce((sum, item) => sum + getNumeric(item?.CapChange), 0);
-  const perksArr = Array.isArray(db[userId].perks) ? db[userId].perks : [];
+  const inventoryLoad = activeCharacter.inventory.reduce((sum, item) => sum + getNumeric(item?.Weight), 0);
+  const inventoryCapChange = activeCharacter.inventory.reduce((sum, item) => sum + getNumeric(item?.CapChange), 0);
+  const perksArr = Array.isArray(activeCharacter.perks) ? activeCharacter.perks : [];
   const perkCapChange = perksArr.reduce((sum, perk) => sum + getNumeric(perk?.CapChange), 0);
 
-  db[userId].load = inventoryLoad;
-  db[userId].capacity = 6 + inventoryCapChange + perkCapChange;
+  activeCharacter.load = inventoryLoad;
+  activeCharacter.capacity = 6 + inventoryCapChange + perkCapChange;
 }
 
 module.exports = {
@@ -49,30 +53,67 @@ module.exports = {
     const name = interaction.options.getString('name');
     const { file, db } = getPlayerData();
     const userId = interaction.user.id;
+    let userEntry = db[userId];
 
-    if (!db[userId] || !Array.isArray(db[userId].inventory)) {
-      await replySafely(interaction, { content: 'You do not have an inventory yet.', ephemeral: true });
+    if (!userEntry) {
+      await replySafely(interaction, { content: 'No variables found for you. Create a specialist first.', ephemeral: true });
       return;
     }
 
-    const itemIndex = db[userId].inventory.findIndex(entry => (entry?.Name || '').toLowerCase() === String(name || '').toLowerCase());
+    // --- STRUCTURAL MIGRATION FOR LEGACY SINGLE CHARACTERS ---
+    if (userEntry.name && !userEntry.characters) {
+      const legacyCharacter = { ...userEntry };
+      db[userId] = {
+        activeIndex: 0,
+        characters: [legacyCharacter]
+      };
+      userEntry = db[userId];
+    }
+
+    if (!userEntry.characters || userEntry.characters.length === 0) {
+      await replySafely(interaction, { content: 'You do not have any active specialist profiles.', ephemeral: true });
+      return;
+    }
+
+    // Extract the active profile matching the active pointer index
+    const activeCharacter = userEntry.characters[userEntry.activeIndex];
+
+    if (!activeCharacter || !Array.isArray(activeCharacter.inventory)) {
+      await replySafely(interaction, { content: 'Your active specialist does not have an inventory yet.', ephemeral: true });
+      return;
+    }
+
+    const itemIndex = activeCharacter.inventory.findIndex(entry => (entry?.Name || '').toLowerCase() === String(name || '').toLowerCase());
     if (itemIndex === -1) {
-      await replySafely(interaction, { content: `You do not have an item named ${name}.`, ephemeral: true });
+      await replySafely(interaction, { content: `Your active specialist (**${activeCharacter.name}**) does not have an item named ${name}.`, ephemeral: true });
       return;
     }
 
-    const removedItem = db[userId].inventory.splice(itemIndex, 1)[0];
+    // Splice from the specific active character's list block area bounds
+    const removedItem = activeCharacter.inventory.splice(itemIndex, 1)[0];
     recalculateInventoryStats(db, userId);
     savePlayerData(file, db);
 
-    await replySafely(interaction, { content: `Removed ${removedItem?.Name || name} from your inventory.`, ephemeral: true });
+    await replySafely(interaction, { content: `Removed **${removedItem?.Name || name}** from **${activeCharacter.name}**'s inventory. New load: ${activeCharacter.load}`, ephemeral: true });
   },
 
   async autocomplete(interaction) {
     const focusedValue = interaction.options.getFocused();
     const { db } = getPlayerData();
     const userId = interaction.user.id;
-    const inventory = Array.isArray(db[userId]?.inventory) ? db[userId].inventory : [];
+    const userEntry = db[userId];
+
+    let inventory = [];
+
+    // Safely pull items belonging strictly to the active specialist during character lookup
+    if (userEntry) {
+      if (Array.isArray(userEntry.characters) && userEntry.characters[userEntry.activeIndex]) {
+        inventory = userEntry.characters[userEntry.activeIndex].inventory || [];
+      } else if (userEntry.name && Array.isArray(userEntry.inventory)) {
+        // Unmigrated legacy user fallback matching context path
+        inventory = userEntry.inventory;
+      }
+    }
 
     const choices = inventory
       .filter(entry => entry?.Name)

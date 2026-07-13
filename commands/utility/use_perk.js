@@ -144,8 +144,6 @@ module.exports = {
 
         // Apply changes to database variables
         targetChar.zone = String(currentZone);
-        targetChar.body = 6 - currentZone;
-        targetChar.mind = currentZone - 1;
 
         savePlayerData(freshData.file, freshDb);
 

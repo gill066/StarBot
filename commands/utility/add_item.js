@@ -58,26 +58,63 @@ module.exports = {
     }
 
     const userId = interaction.user.id;
-    if (!db[userId]) db[userId] = { inventory: [] };
-    if (!Array.isArray(db[userId].inventory)) db[userId].inventory = [];
-    db[userId].inventory.push(item);
 
-    // Recalculate load and capacity for this user
+    // 1. Structural Migration / Setup check
+    if (!db[userId]) {
+      db[userId] = {
+        activeIndex: 0,
+        characters: []
+      };
+    }
+
+    // Convert old single character format to array profile on the fly if needed
+    if (db[userId].name && !db[userId].characters) {
+      const legacyCharacter = { ...db[userId] };
+      db[userId] = {
+        activeIndex: 0,
+        characters: [legacyCharacter]
+      };
+    }
+
+    // Reject command if they have no characters at all
+    if (db[userId].characters.length === 0) {
+      return await replySafely(interaction, { 
+        content: "❌ You don't have any characters active. Use `/create_specialist` first!", 
+        ephemeral: true 
+      });
+    }
+
+    // 2. Fetch the target character profile reference using the activeIndex pointer
+    const activeCharacter = db[userId].characters[db[userId].activeIndex];
+
+    // Safely verify character inventory property exists
+    if (!Array.isArray(activeCharacter.inventory)) {
+      activeCharacter.inventory = [];
+    }
+    
+    // Push the item into the array reference
+    activeCharacter.inventory.push(item);
+
+    // 3. Recalculate load and capacity strictly for this specific character
     const getNumeric = v => Number(v ?? 0) || 0;
-    const inventoryLoad = db[userId].inventory.reduce((sum, it) => sum + getNumeric(it?.Weight), 0);
-    const inventoryCapChange = db[userId].inventory.reduce((sum, it) => sum + getNumeric(it?.CapChange), 0);
-    const perksArr = Array.isArray(db[userId].perks) ? db[userId].perks : [];
+    const inventoryLoad = activeCharacter.inventory.reduce((sum, it) => sum + getNumeric(it?.Weight), 0);
+    const inventoryCapChange = activeCharacter.inventory.reduce((sum, it) => sum + getNumeric(it?.CapChange), 0);
+    const perksArr = Array.isArray(activeCharacter.perks) ? activeCharacter.perks : [];
     const perkCapChange = perksArr.reduce((sum, p) => sum + getNumeric(p?.CapChange), 0);
-    db[userId].load = inventoryLoad;
-    db[userId].capacity = 6 + inventoryCapChange + perkCapChange;
+    
+    // Update variables inside the active character object boundaries
+    activeCharacter.load = inventoryLoad;
+    activeCharacter.capacity = 6 + inventoryCapChange + perkCapChange;
 
     try {
       fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');
-      await replySafely(interaction, { content: `Added item to your inventory. New load: ${db[userId].load}`, ephemeral: true });
+      await replySafely(interaction, { 
+        content: `Added item to **${activeCharacter.name}**'s inventory. New load: ${activeCharacter.load}`, 
+        ephemeral: true 
+      });
     } catch (err) {
       console.error('Failed to write player_data.json', err);
       await replySafely(interaction, { content: `Failed to add item.`, ephemeral: true });
     }
   },
-
 };

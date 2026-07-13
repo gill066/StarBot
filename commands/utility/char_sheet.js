@@ -18,11 +18,40 @@ module.exports = {
       db = {};
     }
 
-    const entry = db[interaction.user.id];
-    if (!entry) {
+    const userId = interaction.user.id;
+    let userEntry = db[userId];
+
+    if (!userEntry) {
       await replySafely(interaction, { content: 'No variables found for you. Create a specialist first.', ephemeral: true });
       return;
     }
+
+    // --- STRUCTURAL MIGRATION FOR LEGACY SINGLE CHARACTERS ---
+    if (userEntry.name && !userEntry.characters) {
+      const legacyCharacter = { ...userEntry };
+      db[userId] = {
+        activeIndex: 0,
+        characters: [legacyCharacter]
+      };
+      userEntry = db[userId];
+      
+      // Save the migration back to the disk right away
+      try {
+        fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');
+      } catch (err) {
+        console.error('Failed to write legacy migration during char_sheet:', err);
+      }
+    }
+    // --------------------------------------------------------
+
+    // Reject command execution if they structural entry exists but contains 0 array elements
+    if (!userEntry.characters || userEntry.characters.length === 0) {
+      await replySafely(interaction, { content: 'No specialists found in your database profile. Create one first.', ephemeral: true });
+      return;
+    }
+
+    // Extract the active profile matching the user's active pointer index slot
+    const entry = userEntry.characters[userEntry.activeIndex];
 
     const inventory = Array.isArray(entry.inventory) && entry.inventory.length
       ? entry.inventory.map((item, index) => {
@@ -59,9 +88,14 @@ module.exports = {
 **Capacity:** ${entry.load || 0} / ${entry.capacity || 0}#
 **XP:** ${entry.xp || 0} | **Rank:** ${entry.rank || 1}${zoneFooter}`;
 
+    // Add slot metadata in the embed footer so players know their active list context
+    const slotCount = userEntry.characters.length;
+
     const embed = new EmbedBuilder()
       .setTitle(entry.name)
-      .setDescription(description);
+      .setDescription(description)
+      .setFooter({ text: `Active Slot: ${userEntry.activeIndex + 1} / ${slotCount} (Max 5)` });
+
     await replySafely(interaction, {
       embeds: [embed],
       ephemeral: false,

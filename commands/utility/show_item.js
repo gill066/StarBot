@@ -76,7 +76,7 @@ module.exports = {
       `**Uses Remaining:** ${usesRemaining}/${maxUses}↺`,
     ].join('\n');
 
-    await replySafely(interaction, { content: details, ephemeral: true });
+    await replySafely(interaction, { content: details, ephemeral: false });
   },
 
   async autocomplete(interaction) {

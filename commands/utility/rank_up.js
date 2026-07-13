@@ -72,10 +72,16 @@ module.exports = {
       new ButtonBuilder().setCustomId('rank_add_tag').setLabel('Add Tag').setStyle(ButtonStyle.Secondary),
     );
 
-    const sent = await interaction.reply({ content: `Rank up successful for **${player.name}**! Choose one bonus.`, components: [row], fetchReply: true });
+    // CHANGED: Added ephemeral: true here
+    await interaction.reply({ 
+      content: `Rank up successful for **${player.name}**! Choose one bonus.`, 
+      components: [row], 
+      ephemeral: true 
+    });
 
     const filter = i => i.user.id === interaction.user.id;
-    const collector = sent.createMessageComponentCollector({ filter, time: 60000 });
+    // CHANGED: Targeted interaction directly instead of the 'sent' message variable
+    const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
 
     collector.on('collect', async i => {
       await i.deferUpdate();
@@ -104,7 +110,7 @@ module.exports = {
         activeChar.capacity = (activeChar.capacity || 6) + 1;
         try {
           fs.writeFileSync(dataPath, JSON.stringify(pd, null, 2), 'utf8');
-          await i.followUp({ content: `**${activeChar.name}**'s capacity increased by 1. New capacity: ${activeChar.capacity}`, ephemeral: true });
+          await i.followUp({ content: `**${activeChar.name}**'s capacity increased by 1. New capacity: ${activeChar.capacity}`, ephemeral: false });
         } catch (err) {
           await i.followUp({ content: 'Failed to save updated capacity.', ephemeral: true });
         }
@@ -182,7 +188,7 @@ module.exports = {
 
             try {
               fs.writeFileSync(dataPath, JSON.stringify(pd, null, 2), 'utf8');
-              await sel.reply({ content: `__${chosen}__ added to **${nestedActiveChar.name}**'s __perks__.`, ephemeral: true });
+              await sel.reply({ content: `__${chosen}__ added to **${nestedActiveChar.name}**'s __perks__.`, ephemeral: false });
             } catch (err) {
               await sel.reply({ content: 'Failed to save selected perk.', ephemeral: true });
             }
@@ -230,7 +236,7 @@ module.exports = {
             tagActiveChar.tags.push(candidate);
             fs.writeFileSync(dataPath, JSON.stringify(pd, null, 2), 'utf8');
             try { await userMsg.delete(); } catch (e) {}
-            await i.followUp({ content:'Tag **${candidate}** added to **${tagActiveChar.name}** successfully.', ephemeral: true });
+            await i.followUp({ content:'**${candidate}** added to **${tagActiveChar.name}** successfully.', ephemeral: false });
             added = true;
             } catch (e) {
               await i.followUp({ content: 'Time ran out to provide a tag.', ephemeral: true });

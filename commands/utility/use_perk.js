@@ -88,20 +88,28 @@ module.exports = {
       perk.Uses = -1; // Keep unlimited value preserved
     }
 
+    const cleanPerkName = (perk.Name || perk.key || '').replace(/__/g, '').toLowerCase();
+
+    // --- TRIGGER FOR "DETERMINED" ---
+    if (cleanPerkName === 'determined') {
+      activeCharacter.inTheZone = true;
+    }
+
     savePlayerData(file, db);
     
     const usesAlert = perk.Uses < 0 ? '(Unlimited)' : `(${perk.Uses}↺ remaining)`;
     const description = perk.Description || perk.description || 'No description available.';
-    const cleanPerkName = (perk.Name || perk.key || '').replace(/__/g, '');
 
-    // Send the core activation message first
-    await replySafely(interaction, { 
-      content: `⚡ **${activeCharacter.name}** activated **${perk.Name || perk.key}** ${usesAlert}.\n*${description}*`, 
-      ephemeral: false 
-    });
+    let baseContent = `⚡ **${activeCharacter.name}** activated **${perk.Name || perk.key}** ${usesAlert}.\n*${description}*`;
 
-    // --- INTERACTIVE BUTTON TRIGGER FOR "ADAPTABLE" ---
-    if (cleanPerkName.toLowerCase() === 'adaptable') {
+    // Append extra flare to the response if they used Determined
+    if (cleanPerkName === 'determined') {
+      baseContent += `\n\n💫 **Determined Activation:** **${activeCharacter.name}** is now **I N T H E Z O N E**!`;
+    }
+
+    // --- CHECK IF PERK IS ADAPTABLE TO APPEND BUTTONS DIRECTLY ---
+    let componentsRow = [];
+    if (cleanPerkName === 'adaptable') {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('adaptable_zone_up')
@@ -112,55 +120,59 @@ module.exports = {
           .setLabel('-1 ZONE')
           .setStyle(ButtonStyle.Danger)
       );
-
-      // Send the adjustment control panel ephemerally
-      const buttonReply = await interaction.followUp({
-        content: `🛠️ **Adaptable Prompt:** Adjust **${activeCharacter.name}**'s current ZONE (Current: **${activeCharacter.zone}**):`,
-        components: [row],
-        ephemeral: true,
-        fetchReply: true
-      });
-
-      const filter = i => i.user.id === interaction.user.id;
-      const collector = buttonReply.createMessageComponentCollector({ filter, time: 60000, max: 1 });
-
-      collector.on('collect', async btnInteraction => {
-        // Fetch fresh database instance to edit
-        const freshData = getPlayerData();
-        const freshDb = freshData.db;
-        const targetChar = freshDb[userId]?.characters?.[freshDb[userId]?.activeIndex];
-
-        if (!targetChar) {
-          return await btnInteraction.reply({ content: '❌ Could not re-locate your active specialist tracking profile.', ephemeral: true });
-        }
-
-        let currentZone = Number(targetChar.zone || 0);
-
-        if (btnInteraction.customId === 'adaptable_zone_up') {
-          currentZone += 1;
-        } else if (btnInteraction.customId === 'adaptable_zone_down') {
-          currentZone = Math.max(0, currentZone - 1);
-        }
-
-        // Apply changes to database variables
-        targetChar.zone = String(currentZone);
-
-        savePlayerData(freshData.file, freshDb);
-
-        await btnInteraction.reply({
-          content: `${targetChar.name}'s ZONE is now ${targetChar.zone}.`,
-          ephemeral: false
-        });
-      });
-
-      collector.on('end', async (collected, reason) => {
-        if (reason === 'time') {
-          try {
-            await interaction.editReply({ content: '⏳ Adaptable adjustment window expired.', components: [] });
-          } catch(e) {}
-        }
-      });
+      componentsRow = [row];
     }
+
+    // Send the core activation response
+    const mainMessage = await replySafely(interaction, { 
+      content: baseContent, 
+      components: componentsRow,
+      ephemeral: false,
+      fetchReply: true
+    });
+
+    // If it's not Adaptable, we are fully done executing!
+    if (cleanPerkName !== 'adaptable') return;
+
+    // --- DIRECTIONAL COLLECTION SYSTEM FOR "ADAPTABLE" CORES ---
+    const filter = i => i.user.id === interaction.user.id;
+    const collector = mainMessage.createMessageComponentCollector({ filter, time: 60000, max: 1 });
+
+    collector.on('collect', async btnInteraction => {
+      await btnInteraction.deferUpdate();
+
+      const freshData = getPlayerData();
+      const freshDb = freshData.db;
+      const targetChar = freshDb[userId]?.characters?.[freshDb[userId]?.activeIndex];
+
+      if (!targetChar) {
+        return await interaction.followUp({ content: '❌ Could not re-locate your active specialist profile.', ephemeral: true });
+      }
+
+      let currentZone = Number(targetChar.zone || 0);
+
+      if (btnInteraction.customId === 'adaptable_zone_up') {
+        currentZone += 1;
+      } else if (btnInteraction.customId === 'adaptable_zone_down') {
+        currentZone = Math.max(0, currentZone - 1);
+      }
+
+      targetChar.zone = String(currentZone);
+      savePlayerData(freshData.file, freshDb);
+
+      await interaction.editReply({
+        content: `${baseContent}\n\n🛠️ **Adaptable Update:** **${targetChar.name}** adjusted their layout to **ZONE ${targetChar.zone}** (BODY: ${targetChar.body} | MIND: ${targetChar.mind}).`,
+        components: [] 
+      });
+    });
+
+    collector.on('end', async (collected, reason) => {
+      if (reason === 'time' && collected.size === 0) {
+        try {
+          await interaction.editReply({ components: [] });
+        } catch(e) {}
+      }
+    });
   },
 
   async autocomplete(interaction) {

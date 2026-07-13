@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const { replySafely } = require('../../utils/interaction');
@@ -100,15 +100,16 @@ module.exports = {
     const usesAlert = perk.Uses < 0 ? '(Unlimited)' : `(${perk.Uses}↺ remaining)`;
     const description = perk.Description || perk.description || 'No description available.';
 
-    let baseContent = `⚡ **${activeCharacter.name}** activated the __${perk.Name || perk.key}__ perk. ${usesAlert}.`;
+    let baseContent = `⚡ **${activeCharacter.name}** activated **${perk.Name || perk.key}** ${usesAlert}.\n*${description}*`;
 
-    // Append extra flare to the response if they used Determined
     if (cleanPerkName === 'determined') {
-      baseContent += `\n\n**${activeCharacter.name}** is now **💫 I N T H E Z O N E 💫**!`;
+      baseContent += `\n\n💫 **Determined Activation:** **${activeCharacter.name}** is now **I N T H E Z O N E**!`;
     }
 
-    // --- CHECK IF PERK IS ADAPTABLE TO APPEND BUTTONS DIRECTLY ---
-    let componentsRow = [];
+    // --- SETUP OPTIONAL LAYOUT INTERACTION ARRAYS ---
+    let componentsArray = [];
+
+    // --- CHECK IF PERK IS ADAPTABLE (BUTTONS) ---
     if (cleanPerkName === 'adaptable') {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -120,27 +121,56 @@ module.exports = {
           .setLabel('-1 ZONE')
           .setStyle(ButtonStyle.Danger)
       );
-      componentsRow = [row];
+      componentsArray.push(row);
     }
 
-    // Send the core activation response
+    // --- CHECK IF PERK IS EFFICIENT (SELECT MENU) ---
+    let targetInventory = Array.isArray(activeCharacter.inventory) ? activeCharacter.inventory : [];
+    const validItems = targetInventory.filter(item => item?.Name && (Number(item.Uses ?? 0) > 0 || Number(item.Uses ?? 0) < 0));
+
+    if (cleanPerkName === 'efficient') {
+      if (validItems.length === 0) {
+        baseContent += `\n\n⚠️ **Efficient Prompt:** **${activeCharacter.name}** has no items in their inventory with remaining uses left to execute!`;
+      } else {
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('efficient_item_select')
+          .setPlaceholder('Select an item to use efficiently...');
+
+        // Map inventory items down into option blocks (Discord maximum 25 items cap boundary)
+        const options = validItems.slice(0, 25).map((item, idx) => {
+          const usesLeft = item.Uses < 0 ? 'Unlimited' : `${item.Uses}↺`;
+          return {
+            label: item.Name,
+            description: `Uses: ${usesLeft} | ${item.Use.slice(0, 50)}`,
+            value: `${item.Name.toLowerCase()}_${idx}` // Unique fallback compound ID key
+          };
+        });
+
+        selectMenu.addOptions(options);
+        const menuRow = new ActionRowBuilder().addComponents(selectMenu);
+        componentsArray.push(menuRow);
+      }
+    }
+
+    // Dispatch primary output response
     const mainMessage = await replySafely(interaction, { 
       content: baseContent, 
-      components: componentsRow,
+      components: componentsArray,
       ephemeral: false,
       fetchReply: true
     });
 
-    // If it's not Adaptable, we are fully done executing!
-    if (cleanPerkName !== 'adaptable') return;
+    // Terminate sequence execution immediately if no sub-prompt actions are required
+    if (cleanPerkName !== 'adaptable' && (cleanPerkName !== 'efficient' || validItems.length === 0)) return;
 
-    // --- DIRECTIONAL COLLECTION SYSTEM FOR "ADAPTABLE" CORES ---
+    // --- LOCAL COMPONENT COLLECTOR FRAMEWORK ---
     const filter = i => i.user.id === interaction.user.id;
     const collector = mainMessage.createMessageComponentCollector({ filter, time: 60000, max: 1 });
 
-    collector.on('collect', async btnInteraction => {
-      await btnInteraction.deferUpdate();
+    collector.on('collect', async componentInteraction => {
+      await componentInteraction.deferUpdate();
 
+      // Fetch synchronized database file tracking frame state references
       const freshData = getPlayerData();
       const freshDb = freshData.db;
       const targetChar = freshDb[userId]?.characters?.[freshDb[userId]?.activeIndex];
@@ -149,21 +179,48 @@ module.exports = {
         return await interaction.followUp({ content: '❌ Could not re-locate your active specialist profile.', ephemeral: true });
       }
 
-      let currentZone = Number(targetChar.zone || 0);
+      // 1. Process Adaptable Buttons Changes
+      if (componentInteraction.customId === 'adaptable_zone_up' || componentInteraction.customId === 'adaptable_zone_down') {
+        let currentZone = Number(targetChar.zone || 0);
 
-      if (btnInteraction.customId === 'adaptable_zone_up') {
-        currentZone += 1;
-      } else if (btnInteraction.customId === 'adaptable_zone_down') {
-        currentZone = Math.max(0, currentZone - 1);
+        if (componentInteraction.customId === 'adaptable_zone_up') {
+          currentZone += 1;
+        } else if (componentInteraction.customId === 'adaptable_zone_down') {
+          currentZone = Math.max(0, currentZone - 1);
+        }
+
+        targetChar.zone = String(currentZone);
+        savePlayerData(freshData.file, freshDb);
+
+        await interaction.editReply({
+          content: `${baseContent}\n\n🛠️ **Adaptable Update:** **${targetChar.name}** adjusted their layout to **ZONE ${targetChar.zone}** (BODY: ${targetChar.body} | MIND: ${targetChar.mind}).`,
+          components: [] 
+        });
       }
 
-      targetChar.zone = String(currentZone);
-      savePlayerData(freshData.file, freshDb);
+      // 2. Process Efficient Dropdown Select Choice Mechanics
+      if (componentInteraction.customId === 'efficient_item_select') {
+        const choiceValue = componentInteraction.values[0];
+        
+        // Match the inventory array element index tracking reference string securely
+        const matchedItem = (targetChar.inventory || []).find((item, idx) => {
+          return choiceValue === `${item?.Name?.toLowerCase()}_${idx}`;
+        });
 
-      await interaction.editReply({
-        content: `${baseContent}\n\n🛠️ **Adaptable Update:** **${targetChar.name}** adjusted their layout to **ZONE ${targetChar.zone}** (BODY: ${targetChar.body} | MIND: ${targetChar.mind}).`,
-        components: [] 
-      });
+        if (!matchedItem) {
+          return await interaction.followUp({ content: '❌ Could not find the selected item in your inventory data pool.', ephemeral: true });
+        }
+
+        // --- DO NOT DEDUCT AN ITEM USE VALUE STAGE ---
+        // We explicitly skip changing matchedItem.Uses to keep the usage unexpended!
+
+        const usesAlert = matchedItem.Uses < 0 ? '(Unlimited)' : `(${matchedItem.Uses}↺ remaining - Unexpended)`;
+
+        await interaction.editReply({
+          content: `${baseContent}\n\n⚙️ **Efficient Activation:** **${targetChar.name}** used **${matchedItem.Name}** ${usesAlert} without expending a charge!\n*${matchedItem.Use}*`,
+          components: [] // Clear dropdown row
+        });
+      }
     });
 
     collector.on('end', async (collected, reason) => {
@@ -197,6 +254,7 @@ module.exports = {
         return { name: cleanName, value: cleanName };
       })
       .filter(choice => choice.name)
+
       .filter(choice => !focusedValue || choice.name.toLowerCase().includes(focusedValue.toLowerCase()))
       .slice(0, 25);
 

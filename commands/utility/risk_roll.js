@@ -155,7 +155,7 @@ module.exports = {
       );
 
       const promptMessage = await interaction.followUp({
-        content: `🛠️ **Resourceful:** Your roll resulted in a **${outcome}**. Would you like to spend 1 charge to roll an extra 1d6? (Remaining uses: ${currentUses})`,
+        content: `__Resourceful:__ Your roll resulted in a **${outcome}**. Would you like to spend 1 charge to roll an extra 1d6? (Remaining uses: ${currentUses})`,
         components: [row],
         ephemeral: true
       });
@@ -227,13 +227,13 @@ module.exports = {
 
         // Update the user's private view
         await btnInteraction.update({
-          content: `🎲 __Resourceful Extra Die:__ You rolled a **[${extraRoll}]**!\n**New Total Successes:** ${successCount} (${finalOutcome})${secondaryZoneMsg}\n*Charges remaining: ${freshResourceful.Uses}*`,
+          content: `🎲 __Resourceful Extra Die:__ You rolled a **[${extraRoll}]**!\n**New Total Successes:** ${successCount} (${finalOutcome})${secondaryZoneMsg}\n${freshResourceful.Uses}↺ remaining`,
           components: [] 
         });
 
         // Announce the perk consumption publicly to the channel
         await interaction.followUp({
-          content: `🛠️ **${activeCharacter.name}** uses a charge of __Resourceful__ (Remaining: ${freshResourceful.Uses}) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
+          content: `${activeCharacter.name} used a charge of __Resourceful__ (${freshResourceful.Uses}↺ remaining) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
         });
 
         collector.stop();

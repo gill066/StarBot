@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const { replySafely } = require('../../utils/interaction');
@@ -92,11 +92,77 @@ module.exports = {
     
     const usesAlert = perk.Uses < 0 ? '(Unlimited)' : `(${perk.Uses}↺ remaining)`;
     const description = perk.Description || perk.description || 'No description available.';
-    
+    const cleanPerkName = (perk.Name || perk.key || '').replace(/__/g, '');
+
+    // Send the core activation message first
     await replySafely(interaction, { 
       content: `⚡ **${activeCharacter.name}** activated **${perk.Name || perk.key}** ${usesAlert}.\n*${description}*`, 
       ephemeral: false 
     });
+
+    // --- INTERACTIVE BUTTON TRIGGER FOR "ADAPTABLE" ---
+    if (cleanPerkName.toLowerCase() === 'adaptable') {
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('adaptable_zone_up')
+          .setLabel('+1 ZONE')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('adaptable_zone_down')
+          .setLabel('-1 ZONE')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      // Send the adjustment control panel ephemerally
+      const buttonReply = await interaction.followUp({
+        content: `🛠️ **Adaptable Prompt:** Adjust **${activeCharacter.name}**'s current ZONE (Current: **${activeCharacter.zone}**):`,
+        components: [row],
+        ephemeral: true,
+        fetchReply: true
+      });
+
+      const filter = i => i.user.id === interaction.user.id;
+      const collector = buttonReply.createMessageComponentCollector({ filter, time: 60000, max: 1 });
+
+      collector.on('collect', async btnInteraction => {
+        // Fetch fresh database instance to edit
+        const freshData = getPlayerData();
+        const freshDb = freshData.db;
+        const targetChar = freshDb[userId]?.characters?.[freshDb[userId]?.activeIndex];
+
+        if (!targetChar) {
+          return await btnInteraction.reply({ content: '❌ Could not re-locate your active specialist tracking profile.', ephemeral: true });
+        }
+
+        let currentZone = Number(targetChar.zone || 0);
+
+        if (btnInteraction.customId === 'adaptable_zone_up') {
+          currentZone += 1;
+        } else if (btnInteraction.customId === 'adaptable_zone_down') {
+          currentZone = Math.max(0, currentZone - 1);
+        }
+
+        // Apply changes to database variables
+        targetChar.zone = String(currentZone);
+        targetChar.body = 6 - currentZone;
+        targetChar.mind = currentZone - 1;
+
+        savePlayerData(freshData.file, freshDb);
+
+        await btnInteraction.reply({
+          content: `✅ ZONE adjusted successfully! **${targetChar.name}** is now at **ZONE ${targetChar.zone}** (BODY: ${targetChar.body} | MIND: ${targetChar.mind}).`,
+          ephemeral: true
+        });
+      });
+
+      collector.on('end', async (collected, reason) => {
+        if (reason === 'time') {
+          try {
+            await interaction.editReply({ content: '⏳ Adaptable adjustment window expired.', components: [] });
+          } catch(e) {}
+        }
+      });
+    }
   },
 
   async autocomplete(interaction) {
@@ -107,19 +173,16 @@ module.exports = {
 
     let perks = [];
 
-    // Safely look up character perks within autocomplete parsing boundaries
     if (userEntry) {
       if (Array.isArray(userEntry.characters) && userEntry.characters[userEntry.activeIndex]) {
         perks = userEntry.characters[userEntry.activeIndex].perks || [];
       } else if (userEntry.name && Array.isArray(userEntry.perks)) {
-        // Fallback option mapping context for unmigrated single characters
         perks = userEntry.perks;
       }
     }
 
     const choices = perks
       .map(entry => {
-        // Fallback checks to extract the cleanest string name (removing markdown syntax like __Determined__)
         const cleanName = (entry?.Name || entry?.name || entry?.key || '').replace(/__/g, '');
         return { name: cleanName, value: cleanName };
       })

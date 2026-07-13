@@ -100,11 +100,11 @@ module.exports = {
     const usesAlert = perk.Uses < 0 ? '(Unlimited)' : `(${perk.Uses}↺ remaining)`;
     const description = perk.Description || perk.description || 'No description available.';
 
-    let baseContent = `⚡ **${activeCharacter.name}** activated **${perk.Name || perk.key}** ${usesAlert}.\n*${description}*`;
+    let baseContent = `⚡ **${activeCharacter.name}** activated the __${perk.Name || perk.key}__ perk. ${usesAlert}.`;
 
     // Append extra flare to the response if they used Determined
     if (cleanPerkName === 'determined') {
-      baseContent += `\n\n💫 **Determined Activation:** **${activeCharacter.name}** is now **I N T H E Z O N E**!`;
+      baseContent += `\n\n**${activeCharacter.name}** is now **💫 I N T H E Z O N E 💫**!`;
     }
 
     // --- CHECK IF PERK IS ADAPTABLE TO APPEND BUTTONS DIRECTLY ---

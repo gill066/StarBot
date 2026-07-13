@@ -63,43 +63,62 @@ module.exports = {
     }).length;
 
     const anyExact = rolls.some(r => r === zoneValue);
-    let updatedZone = null;
-    try {
-      const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
-      const raw = fs.readFileSync(dataPath, 'utf8');
-      const db = raw.trim() ? JSON.parse(raw) : {};
-      const userId = interaction.user.id;
-      if (db[userId]) {
+    
+    // ... [Your code up to the success count calculation] ...
+
+let updatedZone = null;
+let zoneChanged = false; // Added to track actual state changes
+
+try {
+    const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
+    const raw = fs.readFileSync(dataPath, 'utf8');
+    const db = raw.trim() ? JSON.parse(raw) : {};
+    const userId = interaction.user.id;
+
+    if (db[userId]) {
+        // Track the previous state
+        const wasInTheZone = db[userId].inTheZone;
+
         if (anyExact) {
-          db[userId].inTheZone = true;
-          updatedZone = true;
+            db[userId].inTheZone = true;
+            updatedZone = true;
         } else if (successCount === 0) {
-          db[userId].inTheZone = false;
-          updatedZone = false;
+            db[userId].inTheZone = false;
+            updatedZone = false;
         }
-        if (updatedZone !== null) {
-          fs.writeFileSync(dataPath, JSON.stringify(db, null, 2), 'utf8');
+
+        // Check if the state actually changed
+        if (updatedZone !== null && wasInTheZone !== updatedZone) {
+            zoneChanged = true;
+            fs.writeFileSync(dataPath, JSON.stringify(db, null, 2), 'utf8');
         }
-      }
-    } catch (e) {
-      console.error('Failed to update inTheZone', e);
     }
+} catch (e) {
+    console.error('Failed to update inTheZone', e);
+}
 
-    // compute outcome with if/else
-    let outcome;
-    if (successCount >= 2) {
-      outcome = 'SUCCESS';
-    } else if (successCount === 1) {
-      outcome = 'MIXED';
-    } else {
-      outcome = 'FAILURE';
+// compute outcome with if/else
+let outcome;
+if (successCount >= 2) {
+    outcome = 'SUCCESS';
+} else if (successCount === 1) {
+    outcome = 'MIXED';
+} else {
+    outcome = 'FAILURE';
+}
+
+let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}. (Load penalty: ${overweight}, tag bonus: ${number})\n${outcome} - Rolls: [${rolls.join(', ')}]`;
+
+// Only append the message if the state changed
+if (zoneChanged) {
+    if (updatedZone === false) {
+        replyMsg += ` You are not 💫 I N T H E Z O N E 💫`;
+    } else if (updatedZone === true) {
+        replyMsg += ` You are now 💫 I N T H E Z O N E 💫`;
     }
+}
 
-    let replyMsg = `Rolling ${dice}D6 against ZONE ${zoneValue} using ${target}. (Load penalty: ${overweight}, tag bonus: ${number})
-${outcome} - Rolls: [${rolls.join(', ')}]
-`;
-    if (updatedZone === false) replyMsg += 'You are no longer 💫 I N T H E Z O N E 💫';
-    if (updatedZone === true) replyMsg += 'You are now 💫 I N T H E Z O N E 💫';
-    await replySafely(interaction, { content: replyMsg });
+await replySafely(interaction, { content: replyMsg });
+
   }
 };

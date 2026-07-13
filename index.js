@@ -45,11 +45,6 @@ client.on("ready", () => {
     // You can set a custom activity as well
 })
 
-// Fires when bot gets in a guild
-client.on("guildCreate", server => {
-    // Your code here...
-})
-
 // Fires when a member sends a message to chat
 client.on("messageCreate", async (message) => {
     // Ignore other bots
@@ -71,11 +66,6 @@ client.on("messageCreate", async (message) => {
 
     // Your code here...
 
-});
-
-// Fires when a member join a guild
-client.on("guildMemberAdd", member => {
-    // Your code here...
 });
 
 client.commands = new Collection();

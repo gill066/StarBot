@@ -236,7 +236,7 @@ module.exports = {
             tagActiveChar.tags.push(candidate);
             fs.writeFileSync(dataPath, JSON.stringify(pd, null, 2), 'utf8');
             try { await userMsg.delete(); } catch (e) {}
-            await i.followUp({ content:'**${candidate}** added to **${tagActiveChar.name}** successfully.', ephemeral: false });
+            await i.followUp({ content:`**${candidate}** added to **${tagActiveChar.name}** successfully.`, ephemeral: false });
             added = true;
             } catch (e) {
               await i.followUp({ content: 'Time ran out to provide a tag.', ephemeral: true });

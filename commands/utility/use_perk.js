@@ -100,10 +100,10 @@ module.exports = {
     const usesAlert = perk.Uses < 0 ? '(Unlimited)' : `(${perk.Uses}↺ remaining)`;
     const description = perk.Description || perk.description || 'No description available.';
 
-    let baseContent = `⚡ **${activeCharacter.name}** activated **${perk.Name || perk.key}** ${usesAlert}.\n*${description}*`;
+    let baseContent = `⚡ ${activeCharacter.name} activated __${perk.Name || perk.key}__ ${usesAlert}.\n*${description}*`;
 
     if (cleanPerkName === 'determined') {
-      baseContent += `\n\n💫 **Determined Activation:** **${activeCharacter.name}** is now **I N T H E Z O N E**!`;
+      baseContent += `\n\n${activeCharacter.name} is now **💫 I N T H E Z O N E 💫**!`;
     }
 
     // --- SETUP OPTIONAL LAYOUT INTERACTION ARRAYS ---
@@ -130,7 +130,7 @@ module.exports = {
 
     if (cleanPerkName === 'efficient') {
       if (validItems.length === 0) {
-        baseContent += `\n\n⚠️ **Efficient Prompt:** **${activeCharacter.name}** has no items in their inventory with remaining uses left to execute!`;
+        baseContent += `\n\n⚠️ **Efficient Prompt:** ${activeCharacter.name} has no items in their inventory with remaining uses left to execute!`;
       } else {
         const selectMenu = new StringSelectMenuBuilder()
           .setCustomId('efficient_item_select')
@@ -193,7 +193,7 @@ module.exports = {
         savePlayerData(freshData.file, freshDb);
 
         await interaction.editReply({
-          content: `${baseContent}\n\n🛠️ **Adaptable Update:** **${targetChar.name}** adjusted their layout to **ZONE ${targetChar.zone}** (BODY: ${targetChar.body} | MIND: ${targetChar.mind}).`,
+          content: `${baseContent}\n\n🛠️ ${targetChar.name} adjusted their ZONE to ${targetChar.zone}.`,
           components: [] 
         });
       }
@@ -217,7 +217,7 @@ module.exports = {
         const usesAlert = matchedItem.Uses < 0 ? '(Unlimited)' : `(${matchedItem.Uses}↺ remaining - Unexpended)`;
 
         await interaction.editReply({
-          content: `${baseContent}\n\n⚙️ **Efficient Activation:** **${targetChar.name}** used **${matchedItem.Name}** ${usesAlert} without expending a charge!\n*${matchedItem.Use}*`,
+          content: `${baseContent}\n\n⚙️ ${targetChar.name} used __${matchedItem.Name}__ ${usesAlert} without expending a charge!\n*${matchedItem.Use}*`,
           components: [] // Clear dropdown row
         });
       }

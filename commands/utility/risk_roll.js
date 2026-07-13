@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { replySafely } = require('../../utils/interaction');
@@ -78,13 +78,13 @@ module.exports = {
     const dice = Math.max(1 + number - overweight, 1); // Ensure at least 1 die is rolled even if overweight
 
     const rolls = Array.from({ length: dice }, () => Math.floor(Math.random() * 6) + 1);
-    const successCount = rolls.filter(result => {
+    let successCount = rolls.filter(result => {
       return target === 'BODY'
         ? result >= zoneValue
         : result <= zoneValue;
     }).length;
 
-    const anyExact = rolls.some(r => r === zoneValue);
+    let anyExact = rolls.some(r => r === zoneValue);
     
     // 3. Update character fields securely on the nested instance
     let updatedZone = null;
@@ -113,7 +113,7 @@ module.exports = {
         console.error('Failed to update player database state variables', e);
     }
 
-    // compute outcome outcome text configurations
+    // compute outcome text configurations
     let outcome;
     if (successCount >= 2) {
         outcome = 'SUCCESS';
@@ -134,6 +134,124 @@ module.exports = {
         }
     }
 
+    // Send the main roll result message
     await replySafely(interaction, { content: replyMsg });
+
+    // === NEW LOGIC: RESOURCEFUL PERK CHECK ===
+    // Scan the perks array for a perk with the key "resourceful" (case-insensitive)
+    const characterPerks = activeCharacter.perks || [];
+    const resourcefulPerk = characterPerks.find(p => String(p.key || '').toLowerCase() === 'resourceful');
+
+    // Only proceed if they actually have the perk, failed/mixed the roll, and have uses remaining
+    if (resourcefulPerk && (outcome === 'MIXED' || outcome === 'FAILURE') && Number(resourcefulPerk.Uses) > 0) {
+      
+      const currentUses = Number(resourcefulPerk.Uses);
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('add_resourceful_die')
+          .setLabel(`Roll Extra 1d6 (${currentUses} left)`)
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      const promptMessage = await interaction.followUp({
+        content: `🛠️ **Resourceful:** Your roll resulted in a **${outcome}**. Would you like to spend 1 charge to roll an extra 1d6? (Remaining uses: ${currentUses})`,
+        components: [row],
+        ephemeral: true
+      });
+
+      const collector = promptMessage.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 60000 
+      });
+
+      collector.on('collect', async (btnInteraction) => {
+        if (btnInteraction.user.id !== interaction.user.id) {
+          await btnInteraction.reply({ content: 'This is not your perk prompt.', ephemeral: true });
+          return;
+        }
+
+        // Re-read DB file from disk for data security (concurrency safety)
+        let currentDb = {};
+        try {
+          const currentRaw = fs.readFileSync(dataPath, 'utf8');
+          currentDb = currentRaw.trim() ? JSON.parse(currentRaw) : db;
+        } catch (err) {
+          console.error(err);
+          currentDb = db;
+        }
+
+        const freshCharacter = currentDb[userId].characters[currentDb[userId].activeIndex];
+        const freshPerks = freshCharacter.perks || [];
+        const freshResourceful = freshPerks.find(p => String(p.key || '').toLowerCase() === 'resourceful');
+
+        // Check if charges were depleted while waiting
+        if (!freshResourceful || Number(freshResourceful.Uses) <= 0) {
+          await btnInteraction.update({
+            content: '❌ You no longer have any uses of Resourceful remaining!',
+            components: []
+          });
+          collector.stop();
+          return;
+        }
+
+        // Deduct 1 usage point
+        freshResourceful.Uses = Number(freshResourceful.Uses) - 1;
+
+        // Roll the extra 1d6
+        const extraRoll = Math.floor(Math.random() * 6) + 1;
+        
+        // Evaluate math changes
+        const extraSuccess = target === 'BODY' ? extraRoll >= zoneValue : extraRoll <= zoneValue;
+        if (extraSuccess) successCount += 1;
+
+        // Check for exact zone value shifts
+        let secondaryZoneMsg = '';
+        if (extraRoll === zoneValue && !freshCharacter.inTheZone) {
+          freshCharacter.inTheZone = true;
+          secondaryZoneMsg = `\nYou are now 💫 I N T H E Z O N E 💫`;
+        }
+
+        // Save updated uses and optional "In The Zone" changes to JSON database
+        try {
+          fs.writeFileSync(dataPath, JSON.stringify(currentDb, null, 2), 'utf8');
+        } catch (err) {
+          console.error('Failed to deduct Resourceful usage charges', err);
+        }
+
+        // Recalculate final outcome tier
+        let finalOutcome;
+        if (successCount >= 2) finalOutcome = 'SUCCESS';
+        else if (successCount === 1) finalOutcome = 'MIXED';
+        else finalOutcome = 'FAILURE';
+
+        // Update the user's private view
+        await btnInteraction.update({
+          content: `🎲 **Resourceful Extra Die:** You rolled a **[${extraRoll}]**!\n**New Total Successes:** ${successCount} (${finalOutcome})${secondaryZoneMsg}\n*Charges remaining: ${freshResourceful.Uses}*`,
+          components: [] 
+        });
+
+        // Announce the perk consumption publicly to the channel
+        await interaction.followUp({
+          content: `🛠️ **${activeCharacter.name}** uses a charge of **Resourceful** (Remaining: ${freshResourceful.Uses}) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
+        });
+
+        collector.stop();
+      });
+
+      collector.on('end', async (collected, reason) => {
+        if (reason === 'time') {
+          const disabledRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('add_resourceful_die')
+              .setLabel('Expired')
+              .setStyle(ButtonStyle.Secondary)
+              .setDisabled(true)
+          );
+          await interaction.editReply({ components: [disabledRow] }).catch(() => {});
+        }
+      });
+    }
+    // === END OF RESOURCEFUL PERK LOGIC ===
   }
 };

@@ -90,7 +90,6 @@ module.exports = {
 
     const cleanPerkName = (perk.Name || perk.key || '').replace(/__/g, '').toLowerCase();
 // Clean the perk name for processing (lowercase and trim whitespace)
-const cleanPerkName = String(perkName || '').toLowerCase().trim();
 
 if (cleanPerkName === 'resourceful') {
   await replySafely(interaction, {

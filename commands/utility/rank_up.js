@@ -249,7 +249,7 @@ module.exports = {
       try { await userMsg.delete(); } catch (e) {}
       
       // FIX: Verified backticks applied below
-      await i.followUp({ content: `**${candidate}** added to **${tagActiveChar.name}** successfully.`, ephemeral: false });
+      await i.followUp({ content: `*${candidate}* successfully added to ${tagActiveChar.name}'s *tags*.`, ephemeral: false });
       added = true;
       
     } catch (e) {

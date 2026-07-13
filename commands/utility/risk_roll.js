@@ -216,7 +216,7 @@ module.exports = {
         try {
           fs.writeFileSync(dataPath, JSON.stringify(currentDb, null, 2), 'utf8');
         } catch (err) {
-          console.error('Failed to deduct Resourceful usage charges', err);
+          console.error('Failed to deduct Resourceful usage ↺s', err);
         }
 
         // Recalculate final outcome tier
@@ -233,7 +233,7 @@ module.exports = {
 
         // Announce the perk consumption publicly to the channel
         await interaction.followUp({
-          content: `${activeCharacter.name} used a charge of __Resourceful__ (${freshResourceful.Uses}↺ remaining) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
+          content: `${activeCharacter.name} used a ↺ of __Resourceful__ (${freshResourceful.Uses}↺ remaining) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
         });
 
         collector.stop();

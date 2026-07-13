@@ -13,7 +13,7 @@
     "Tech": {"Name":"Drone","Use":"Do tasks from afar. 1↺ per task","Weight":2,"Uses":3,"MaxUses":3,"CapChange":0},
     "Science": {"Name":"Scanner","Use":"Scan targets. 1↺ to collect data","Weight":1,"Uses":3,"MaxUses":3,"CapChange":0},
     "Medical": {"Name":"Medkit","Use":"Fix injuries. 1↺ per injury healed","Weight":3,"Uses":3,"MaxUses":3,"CapChange":0},
-    "Security": {"Name":"Coilgun","Use":"Magnetic SMG. 1↺ to injure or kill. ","Weight":2,"Uses":6,"MaxUses":6,"CapChange":0}
+    "Security": {"Name":"Coilgun","Use":"Magnetic SMG. 1↺ to injure or kill","Weight":2,"Uses":6,"MaxUses":6,"CapChange":0}
   },
   "types": [
     "Cocky",

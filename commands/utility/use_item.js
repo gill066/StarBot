@@ -85,7 +85,7 @@ module.exports = {
 
     savePlayerData(file, db);
     
-    const usesAlert = item.Uses < 0 ? '(Unlimited)' : `(${item.Uses} left)`;
+    const usesAlert = item.Uses < 0 ? '(Unlimited)' : `(${item.Uses}↺ remaining)`;
     await replySafely(interaction, { content: `**${activeCharacter.name}** used **${item.Name}** ${usesAlert}.\n*${item.Use}*`, ephemeral: false });
   },
 

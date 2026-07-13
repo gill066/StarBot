@@ -156,7 +156,7 @@ module.exports = {
     const mainMessage = await replySafely(interaction, { 
       content: baseContent, 
       components: componentsArray,
-      ephemeral: true,
+      ephemeral: false,
       fetchReply: true
     });
 

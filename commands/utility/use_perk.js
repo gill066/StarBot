@@ -93,7 +93,7 @@ module.exports = {
 
 if (cleanPerkName === 'resourceful') {
   await replySafely(interaction, {
-    content: 'ℹ️ **Resourceful** is an automated perk. It can only be triggered via a button prompt right after you make a `/risk_roll` that results in a **MIXED** or **FAILURE** outcome.',
+    content: 'ℹ️ *__Resourceful__ is an automated perk. It can only be triggered via a button prompt right after you make a `/risk_roll` that results in a **MIXED** or **FAILURE** outcome.',
     ephemeral: true
   });
   return; // Stop execution so they can't manually activate it here

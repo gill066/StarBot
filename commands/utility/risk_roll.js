@@ -227,13 +227,13 @@ module.exports = {
 
         // Update the user's private view
         await btnInteraction.update({
-          content: `🎲 **Resourceful Extra Die:** You rolled a **[${extraRoll}]**!\n**New Total Successes:** ${successCount} (${finalOutcome})${secondaryZoneMsg}\n*Charges remaining: ${freshResourceful.Uses}*`,
+          content: `🎲 __Resourceful Extra Die:__ You rolled a **[${extraRoll}]**!\n**New Total Successes:** ${successCount} (${finalOutcome})${secondaryZoneMsg}\n*Charges remaining: ${freshResourceful.Uses}*`,
           components: [] 
         });
 
         // Announce the perk consumption publicly to the channel
         await interaction.followUp({
-          content: `🛠️ **${activeCharacter.name}** uses a charge of **Resourceful** (Remaining: ${freshResourceful.Uses}) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
+          content: `🛠️ **${activeCharacter.name}** uses a charge of __Resourceful__ (Remaining: ${freshResourceful.Uses}) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
         });
 
         collector.stop();

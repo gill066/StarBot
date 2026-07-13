@@ -2,3 +2,4 @@
 node_modules/
 player_data.json
 .env
+.ds_store

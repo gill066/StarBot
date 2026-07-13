@@ -15,8 +15,8 @@ module.exports = {
     )
     .addStringOption(option =>
       option
-        .setName('use')
-        .setDescription('Item use')
+        .setName('function')
+        .setDescription('Item function')
         .setRequired(true)
     )
     .addIntegerOption(option =>
@@ -34,7 +34,7 @@ module.exports = {
 
   async execute(interaction) {
     const name = interaction.options.getString('name');
-    const use = interaction.options.getString('use');
+    const use = interaction.options.getString('function');
     const weight = interaction.options.getInteger('weight');
     const uses = interaction.options.getInteger('uses');
 
@@ -109,8 +109,8 @@ module.exports = {
     try {
       fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');
       await replySafely(interaction, { 
-        content: `Added item to **${activeCharacter.name}**'s inventory. New load: ${activeCharacter.load}`, 
-        ephemeral: true 
+        content: `Added **${name}**item to ${activeCharacter.name}'s inventory. New load: ${activeCharacter.load}`, 
+        ephemeral: false 
       });
     } catch (err) {
       console.error('Failed to write player_data.json', err);

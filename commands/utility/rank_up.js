@@ -203,49 +203,63 @@ module.exports = {
       }
 
       if (i.customId === 'rank_add_tag') {
-        await i.followUp({ content: 'Type the new tag in chat within 30 seconds (single word).', ephemeral: true });
-        const maxAttempts = 3;
-        let added = false;
-        for (let attempt = 0; attempt < maxAttempts && !added; attempt++) {
-          try {
-            const collected = await interaction.channel.awaitMessages({ filter: m => m.author.id === interaction.user.id, max: 1, time: 30000, errors: ['time'] });
-            const userMsg = collected.first();
-            const candidate = userMsg.content.trim();
-            if (!candidate) {
-              await i.followUp({ content: 'Empty tag entered. Please enter a single word (no spaces).', ephemeral: true });
-              continue;
-            }
-            if (/\s/.test(candidate)) {
-              if (attempt < maxAttempts - 1) {
-                try { await userMsg.delete(); } catch(e) {}
-                await i.followUp({ content: 'Please enter a single word with no spaces. Try again.', ephemeral: true });
-                continue;
-              } else {
-                await i.followUp({ content: 'No valid single-word tag entered in time.', ephemeral: true });
-                break;
-              }
-            }
-            
-            // Reload and inject into the active user character array instance
-            try {
-              const tagRaw = fs.readFileSync(dataPath, 'utf8');
-              pd = tagRaw.trim() ? JSON.parse(tagRaw) : {};
-            } catch(e) {}
-            const tagActiveChar = pd[userId].characters[pd[userId].activeIndex];
-            tagActiveChar.tags = tagActiveChar.tags || [];
-            tagActiveChar.tags.push(candidate);
-            fs.writeFileSync(dataPath, JSON.stringify(pd, null, 2), 'utf8');
-            try { await userMsg.delete(); } catch (e) {}
-            await i.followUp({ content:`**${candidate}** added to **${tagActiveChar.name}** successfully.`, ephemeral: false });
-            added = true;
-            } catch (e) {
-              await i.followUp({ content: 'Time ran out to provide a tag.', ephemeral: true });
-              break;
-            }
-          }
-          collector.stop();
-          return;
-          }
+  await i.followUp({ content: 'Type the new tag in chat within 30 seconds (single word).', ephemeral: true });
+  const maxAttempts = 3;
+  let added = false;
+  
+  for (let attempt = 0; attempt < maxAttempts && !added; attempt++) {
+    try {
+      const collected = await interaction.channel.awaitMessages({ 
+        filter: m => m.author.id === interaction.user.id, 
+        max: 1, 
+        time: 30000, 
+        errors: ['time'] 
+      });
+      
+      const userMsg = collected.first();
+      const candidate = userMsg.content.trim();
+      
+      if (!candidate) {
+        await i.followUp({ content: 'Empty tag entered. Please enter a single word (no spaces).', ephemeral: true });
+        continue;
+      }
+      
+      if (/\s/.test(candidate)) {
+        if (attempt < maxAttempts - 1) {
+          try { await userMsg.delete(); } catch(e) {}
+          await i.followUp({ content: 'Please enter a single word with no spaces. Try again.', ephemeral: true });
+          continue;
+        } else {
+          await i.followUp({ content: 'No valid single-word tag entered in time.', ephemeral: true });
+          break;
+        }
+      }
+      
+      // Reload and inject into the active user character array instance
+      try {
+        const tagRaw = fs.readFileSync(dataPath, 'utf8');
+        pd = tagRaw.trim() ? JSON.parse(tagRaw) : {};
+      } catch(e) {}
+      
+      const tagActiveChar = pd[userId].characters[pd[userId].activeIndex];
+      tagActiveChar.tags = tagActiveChar.tags || [];
+      tagActiveChar.tags.push(candidate);
+      fs.writeFileSync(dataPath, JSON.stringify(pd, null, 2), 'utf8');
+      
+      try { await userMsg.delete(); } catch (e) {}
+      
+      // FIX: Verified backticks applied below
+      await i.followUp({ content: `**${candidate}** added to **${tagActiveChar.name}** successfully.`, ephemeral: false });
+      added = true;
+      
+    } catch (e) {
+      await i.followUp({ content: 'Time ran out to provide a tag.', ephemeral: true });
+      break;
+    }
+  }
+  collector.stop();
+  return;
+}
           });
           },
           };

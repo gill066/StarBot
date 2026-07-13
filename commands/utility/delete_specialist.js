@@ -18,7 +18,7 @@ module.exports = {
   // Autocomplete feeds character selection targets to the player UI
   async autocomplete(interaction) {
     const focusedValue = interaction.options.getFocused().toLowerCase();
-    const file = path.join(__dirname, '..', '..', 'player_data.json');
+    const file = path.join(__dirname, '..', '..', '..', 'player_data.json');
     let db = {};
 
     try {

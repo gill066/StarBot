@@ -207,6 +207,9 @@ module.exports = {
   const maxAttempts = 3;
   let added = false;
   
+  // Define how much XP should be refunded on failure/timeout
+  const xpCost = 100; // Change this to match your actual XP cost variable
+
   for (let attempt = 0; attempt < maxAttempts && !added; attempt++) {
     try {
       const collected = await interaction.channel.awaitMessages({ 
@@ -230,7 +233,18 @@ module.exports = {
           await i.followUp({ content: 'Please enter a single word with no spaces. Try again.', ephemeral: true });
           continue;
         } else {
-          await i.followUp({ content: 'No valid single-word tag entered in time.', ephemeral: true });
+          // REFUND: Out of attempts due to formatting errors
+          try {
+            const tagRaw = fs.readFileSync(dataPath, 'utf8');
+            pd = tagRaw.trim() ? JSON.parse(tagRaw) : {};
+            
+            // Adjust this path to wherever you store user or character XP
+            pd[userId].xp = (pd[userId].xp || 0) + xpCost; 
+            
+            fs.writeFileSync(dataPath, JSON.stringify(pd, null, 2), 'utf8');
+          } catch(err) { console.error("Refund failed:", err); }
+
+          await i.followUp({ content: `No valid single-word tag entered in time. Your ${xpCost} XP has been refunded.`, ephemeral: true });
           break;
         }
       }
@@ -248,12 +262,22 @@ module.exports = {
       
       try { await userMsg.delete(); } catch (e) {}
       
-      // FIX: Verified backticks applied below
       await i.followUp({ content: `*${candidate}* successfully added to ${tagActiveChar.name}'s *tags*.`, ephemeral: false });
       added = true;
       
     } catch (e) {
-      await i.followUp({ content: 'Time ran out to provide a tag.', ephemeral: true });
+      // REFUND: The 30-second timer ran out
+      try {
+        const tagRaw = fs.readFileSync(dataPath, 'utf8');
+        pd = tagRaw.trim() ? JSON.parse(tagRaw) : {};
+        
+        // Adjust this path to wherever you store user or character XP
+        pd[userId].xp = (pd[userId].xp || 0) + xpCost; 
+        
+        fs.writeFileSync(dataPath, JSON.stringify(pd, null, 2), 'utf8');
+      } catch(err) { console.error("Refund failed:", err); }
+
+      await i.followUp({ content: `Time ran out to provide a tag. Your ${xpCost} XP has been refunded.`, ephemeral: true });
       break;
     }
   }

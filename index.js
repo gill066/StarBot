@@ -14,6 +14,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessageReactions,
         // Privileged intents (enable in Developer Portal if needed):
         GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.MessageContent,
     ],
     partials: [Partials.Channel, Partials.Message, Partials.Reaction],
 });

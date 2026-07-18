@@ -54,7 +54,7 @@ module.exports = {
       // Handle Cancel option
       if (btnInteraction.customId === 'sr_btn_cancel') {
         await btnInteraction.update({
-          content: '❌ Setup cancelled. Existing episode data was preserved.',
+          content: 'Setup cancelled. Existing episode data was preserved.',
           components: []
         });
         btnCollector.stop();
@@ -161,7 +161,7 @@ module.exports = {
 
           // Clean up the initial button window text view out of the player history panel
           await interaction.editReply({
-            content: '💥 Existing episode information overwritten.',
+            content: 'Existing episode information overwritten.',
             components: []
           }).catch(() => {});
 

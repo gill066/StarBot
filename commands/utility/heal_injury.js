@@ -43,7 +43,7 @@ module.exports = {
     // Build interactive dropdown selections out of current active injuries
     const options = character.injuries.map((injury, idx) => {
       return new StringSelectMenuOptionBuilder()
-        .setLabel(`[${idx + 1}] <${injury.classification}>`)
+        .setLabel(`<${injury.classification}>`)
         .setDescription(injury.mechanicsText.substring(0, 100))
         .setValue(String(idx));
     });

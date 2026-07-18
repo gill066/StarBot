@@ -236,6 +236,11 @@ module.exports = {
           content: `${activeCharacter.name} used a ↺ of __Resourceful__ (${freshResourceful.Uses}↺ remaining) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
         });
 
+        // If the re-roll STILL yields a failure, run the injury check sequence
+        if (finalOutcome === 'FAILURE') {
+          await runInjurySequence(interaction, target, dataPath, userId);
+        }
+
         collector.stop();
       });
 
@@ -249,9 +254,201 @@ module.exports = {
               .setDisabled(true)
           );
           await interaction.editReply({ components: [disabledRow] }).catch(() => {});
+          
+          // If they didn't utilize Resourceful and it was an outright failure, process injury now
+          if (outcome === 'FAILURE') {
+            await runInjurySequence(interaction, target, dataPath, userId);
+          }
         }
       });
+    } else if (outcome === 'FAILURE') {
+      // No Resourceful alternatives available, jump straight into processing injury updates
+      await runInjurySequence(interaction, target, dataPath, userId);
     }
     // === END OF RESOURCEFUL PERK LOGIC ===
   }
 };
+
+// === SUB-PROCESS HANDLERS: INJURY LOGIC WORKFLOWS ===
+
+async function runInjurySequence(interaction, target, dataPath, userId) {
+  // 1. Core State Re-Verification
+  let currentDb = {};
+  try {
+    const raw = fs.readFileSync(dataPath, 'utf8');
+    currentDb = raw.trim() ? JSON.parse(raw) : {};
+  } catch (err) {
+    console.error('Critical reading error within injury workflow thread', err);
+    return;
+  }
+
+  const activeCharacter = currentDb[userId]?.characters?.[currentDb[userId].activeIndex];
+  if (!activeCharacter) return;
+
+  // Resolve matching case variant names inside profile schema safely
+  const attrKey = Object.keys(activeCharacter).find(k => k.toUpperCase() === target.toUpperCase()) || target;
+  const attributeScore = Number(activeCharacter[attrKey] ?? 0);
+
+  // Roll 1d6 mitigation check
+  const injuryRoll = Math.floor(Math.random() * 6) + 1;
+  const baseLogString = `⚠️ **Risk Roll Failure!** Checking for fallback protection... rolled a **${injuryRoll}** against your **${target}** score of **${attributeScore}**.`;
+
+  if (injuryRoll <= attributeScore) {
+    // Immediate Injury required
+    await presentInjuryChoices(interaction, target, dataPath, userId, baseLogString);
+  } else {
+    // Above score: mitigation choices become available
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('injury_tough_it_out')
+        .setLabel('Tough It Out (-1 Stat)')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('injury_take_the_hit')
+        .setLabel('Take An Injury')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    const promptMessage = await interaction.followUp({
+      content: `${baseLogString}\n\nYou rolled *above* your attribute threshold! Would you like to **Tough It Out** or choose to take an **Injury condition** directly?`,
+      components: [row],
+      ephemeral: true
+    });
+
+    const collector = promptMessage.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: 60000
+    });
+
+    collector.on('collect', async (btnInteraction) => {
+      if (btnInteraction.user.id !== interaction.user.id) {
+        await btnInteraction.reply({ content: 'This selection window belongs to another user instance.', ephemeral: true });
+        return;
+      }
+
+      if (btnInteraction.customId === 'injury_tough_it_out') {
+        try {
+          const freshRaw = fs.readFileSync(dataPath, 'utf8');
+          const freshDb = freshRaw.trim() ? JSON.parse(freshRaw) : currentDb;
+          const freshChar = freshDb[userId].characters[freshDb[userId].activeIndex];
+          
+          const oldScore = Number(freshChar[attrKey] ?? 0);
+          freshChar[attrKey] = Math.max(0, oldScore - 1);
+
+          fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
+
+          await btnInteraction.update({
+            content: `🛡️ **Tough It Out Selected:** Your permanent ${target} score was reduced from **${oldScore}** down to **${freshChar[attrKey]}**.`,
+            components: []
+          });
+
+          await interaction.followUp({
+            content: `🛡️ **${freshChar.name}** grits their teeth and decides to **Tough It Out**! Their ${target} score drops to **${freshChar[attrKey]}**.`
+          });
+        } catch (err) {
+          console.error('Failed processing mitigation deductions securely', err);
+        }
+        collector.stop();
+      } else if (btnInteraction.customId === 'injury_take_the_hit') {
+        collector.stop();
+        // Redirect into standard options flow via automated button interface updating
+        await presentInjuryChoices(interaction, target, dataPath, userId, baseLogString, btnInteraction);
+      }
+    });
+  }
+}
+
+async function presentInjuryChoices(interaction, target, dataPath, userId, statusContext, operationalButtonInteraction = null) {
+  const isBody = target.toUpperCase() === 'BODY';
+  
+  const rulesMap = isBody ? [
+    { label: 'Brain', desc: 'Suffer cognitive fog. Lose access to a perk.', val: 'brain' },
+    { label: 'Core', desc: 'Give into pain. CAPACITY halved.', val: 'core' },
+    { label: 'Limb', desc: 'Critically fumble. Destroy one item.', val: 'limb' },
+    { label: 'Strain', desc: 'Forget yourself. Lose access to a tag.', val: 'strain' }
+  ] : [
+    { label: 'Fight', desc: '+1 XP when you do something violent.', val: 'fight' },
+    { label: 'Flight', desc: '+1 XP when you avoid conflict or hardship.', val: 'flight' },
+    { label: 'Freeze', desc: '+1 XP when you let something play out.', val: 'freeze' },
+    { label: 'Fawn', desc: '+1 XP when you comply with an enemy.', val: 'fawn' }
+  ];
+
+  const row = new ActionRowBuilder().addComponents(
+    rulesMap.map(injury => 
+      new ButtonBuilder()
+        .setCustomId(`select_inj_${injury.val}`)
+        .setLabel(injury.label)
+        .setStyle(ButtonStyle.Primary)
+    )
+  );
+
+  const finalPromptContent = `${statusContext}\n\n🚨 **Select your preferred Injury Profile alignment:**\n` + 
+    rulesMap.map(i => `• **<${i.label}>**: ${i.desc}`).join('\n');
+
+  let executionPrompt;
+  if (operationalButtonInteraction) {
+    executionPrompt = await operationalButtonInteraction.update({
+      content: finalPromptContent,
+      components: [row],
+      fetchReply: true
+    });
+  } else {
+    executionPrompt = await interaction.followUp({
+      content: finalPromptContent,
+      components: [row],
+      ephemeral: true
+    });
+  }
+
+  const collector = executionPrompt.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 60000
+  });
+
+  collector.on('collect', async (injuryBtnInteraction) => {
+    if (injuryBtnInteraction.user.id !== interaction.user.id) {
+      await injuryBtnInteraction.reply({ content: 'This tracking instance belongs to another user.', ephemeral: true });
+      return;
+    }
+
+    const targetedKey = injuryBtnInteraction.customId.replace('select_inj_', '');
+    const userChoiceMatch = rulesMap.find(item => item.val === targetedKey);
+
+    try {
+      const freshRaw = fs.readFileSync(dataPath, 'utf8');
+      const freshDb = freshRaw.trim() ? JSON.parse(freshRaw) : {};
+      const targetCharacter = freshDb[userId].characters[freshDb[userId].activeIndex];
+
+      // Track the entry in an array structural log block inside player_data schema variables safely
+      targetCharacter.injuries = targetCharacter.injuries || [];
+      targetCharacter.injuries.push({
+        sourceAttribute: target,
+        classification: userChoiceMatch.label,
+        mechanicsText: userChoiceMatch.desc,
+        loggedAt: new Date().toISOString()
+      });
+
+      // Implement strict functional updates if specified mechanically by system rules
+      if (targetedKey === 'core') {
+        const capacityKey = Object.keys(targetCharacter).find(k => k.toUpperCase() === 'CAPACITY') || 'capacity';
+        const priorCapacity = Number(targetCharacter[capacityKey] ?? 0);
+        targetCharacter[capacityKey] = Math.floor(priorCapacity / 2);
+      }
+
+      fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
+
+      await injuryBtnInteraction.update({
+        content: `✅ **Injury System Logged:** Sustained **<${userChoiceMatch.label}>** successfully.`,
+        components: []
+      });
+
+      await interaction.followUp({
+        content: `💥 **${targetCharacter.name}** has sustained a serious **${target} Injury**: \`<${userChoiceMatch.label}>\`! *(${userChoiceMatch.desc})*`
+      });
+
+    } catch (err) {
+      console.error('Failed saving selected injury structure properties to disk', err);
+    }
+    collector.stop();
+  });
+}

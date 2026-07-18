@@ -52,7 +52,7 @@ module.exports = {
 
     // --- PRONOUNS MOVED HERE ---
     // Added at the very end so it registers successfully after all required choices
-    builder.addStringOption(option => option.setName('pronouns').setDescription('Specialist pronouns (e.g., she/her, they/them)').setRequired(false));
+    builder.addStringOption(option => option.setName('pronouns').setDescription('Specialist pronouns').setRequired(false));
 
     return builder;
   })(),

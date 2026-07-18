@@ -236,7 +236,7 @@ module.exports = {
 
         // Update the user's private view
         await btnInteraction.update({
-          content: `🎲 __Resourceful Extra Die:__ You rolled a **[${extraRoll}]**!\n**New Total Successes:** ${successCount} (${finalOutcome})${secondaryZoneMsg}\n${freshResourceful.Uses}↺ remaining`,
+          content: `You rolled a **[${extraRoll}]**.\n**New Total Successes:** ${successCount} (${finalOutcome})${secondaryZoneMsg}\n${freshResourceful.Uses}↺ remaining`,
           components: [] 
         });
 
@@ -394,231 +394,225 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
   const finalPromptContent = `${statusContext}\n\n🚨 **Select your preferred Injury Profile alignment:**\n` + 
     rulesMap.map(i => `• **<${i.label}>**: ${i.desc}`).join('\n');
 
-  let executionPrompt;
+  // Serve initial prompt view
   if (operationalButtonInteraction) {
-    executionPrompt = await operationalButtonInteraction.update({
+    await operationalButtonInteraction.update({
       content: finalPromptContent,
-      components: [row],
-      fetchReply: true
+      components: [row]
     });
   } else {
-    executionPrompt = await interaction.followUp({
+    await interaction.followUp({
       content: finalPromptContent,
       components: [row],
       ephemeral: true
     });
   }
 
-  const collector = executionPrompt.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 60000
+  // Use a flat channel collector filtered by the active user to circumvent ephemeral caching bugs
+  const collector = interaction.channel.createMessageComponentCollector({
+    filter: (i) => i.user.id === interaction.user.id,
+    time: 120000 // 2-minute expiration lifeline window for the complete sequence
   });
 
-  collector.on('collect', async (injuryBtnInteraction) => {
-    if (injuryBtnInteraction.user.id !== interaction.user.id) {
-      await injuryBtnInteraction.reply({ content: 'This tracking instance belongs to another user.', ephemeral: true });
-      return;
-    }
+  collector.on('collect', async (i) => {
+    // --- STAGE 1: HANDLE INJURY BUTTON CLICKS ---
+    if (i.customId.startsWith('select_inj_')) {
+      const targetedKey = i.customId.replace('select_inj_', '');
+      const userChoiceMatch = rulesMap.find(item => item.val === targetedKey);
 
-    const targetedKey = injuryBtnInteraction.customId.replace('select_inj_', '');
-    const userChoiceMatch = rulesMap.find(item => item.val === targetedKey);
-
-    // Read the database freshly to capture current player state
-    let freshDb = {};
-    try {
-      const freshRaw = fs.readFileSync(dataPath, 'utf8');
-      freshDb = freshRaw.trim() ? JSON.parse(freshRaw) : {};
-    } catch (err) {
-      console.error(err);
-    }
-    const targetCharacter = freshDb[userId]?.characters?.[freshDb[userId].activeIndex];
-    if (!targetCharacter) return;
-
-    // Base structural alignment log entry
-    targetCharacter.injuries = targetCharacter.injuries || [];
-    const injuryLogEntry = {
-      sourceAttribute: target,
-      classification: userChoiceMatch.label,
-      mechanicsText: userChoiceMatch.desc,
-      loggedAt: new Date().toISOString()
-    };
-
-    // Initialize tracking arrays for restorations if they don't exist yet
-    targetCharacter.inactivePerks = targetCharacter.inactivePerks || [];
-    targetCharacter.inactiveItems = targetCharacter.inactiveItems || [];
-    targetCharacter.inactiveTags = targetCharacter.inactiveTags || [];
-
-    // === BRANCH A: NO SELECTION NEEDED (MIND INJURIES & CORE) ===
-    if (!isBody || targetedKey === 'core') {
-      targetCharacter.injuries.push(injuryLogEntry);
-
-      if (targetedKey === 'core') {
-        targetCharacter.coreInjury = true;
-        const capacityKey = Object.keys(targetCharacter).find(k => k.toUpperCase() === 'CAPACITY') || 'capacity';
-        const priorCapacity = Number(targetCharacter[capacityKey] ?? 0);
-        targetCharacter[capacityKey] = Math.floor(priorCapacity / 2);
-      }
-
+      let freshDb = {};
       try {
-        fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
+        const freshRaw = fs.readFileSync(dataPath, 'utf8');
+        freshDb = freshRaw.trim() ? JSON.parse(freshRaw) : {};
       } catch (err) {
-        console.error('Failed saving core/mind injury modification state', err);
+        console.error(err);
       }
+      const targetCharacter = freshDb[userId]?.characters?.[freshDb[userId].activeIndex];
+      if (!targetCharacter) return;
 
-      await injuryBtnInteraction.update({
-        content: `Injury Sustained: **<${userChoiceMatch.label}>**`,
-        components: []
-      });
+      const injuryLogEntry = {
+        sourceAttribute: target,
+        classification: userChoiceMatch.label,
+        mechanicsText: userChoiceMatch.desc,
+        loggedAt: new Date().toISOString()
+      };
 
-      await interaction.followUp({
-        content: `💥 **${targetCharacter.name}** has sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`! *(${userChoiceMatch.desc})*`
-      });
+      targetCharacter.injuries = targetCharacter.injuries || [];
+      targetCharacter.inactivePerks = targetCharacter.inactivePerks || [];
+      targetCharacter.inactiveItems = targetCharacter.inactiveItems || [];
+      targetCharacter.inactiveTags = targetCharacter.inactiveTags || [];
 
-      collector.stop();
-      return;
-    }
+      // Mind Injuries or Core Injury (No dropdown selection sequences required)
+      if (!isBody || targetedKey === 'core') {
+        targetCharacter.injuries.push(injuryLogEntry);
 
-    // === BRANCH B: INTERACTIVE DROPDOWNS (BRAIN, LIMB, STRAIN) ===
-    let dropdownOptions = [];
-    let placeholderText = '';
+        if (targetedKey === 'core') {
+          targetCharacter.coreInjury = true;
+          const capacityKey = Object.keys(targetCharacter).find(k => k.toUpperCase() === 'CAPACITY') || 'capacity';
+          const priorCapacity = Number(targetCharacter[capacityKey] ?? 0);
+          targetCharacter[capacityKey] = Math.floor(priorCapacity / 2);
+        }
 
-    if (targetedKey === 'brain') {
-      const activePerks = (targetCharacter.perks || []).filter(p => !p.inactive);
-      dropdownOptions = activePerks.map((p, idx) => 
-        new StringSelectMenuOptionBuilder()
-          .setLabel((p.Name || p.name || p.key || `Perk ${idx}`).substring(0, 100))
-          .setValue(String(idx))
-      );
-      placeholderText = 'Select a perk to disable...';
-    } 
-    else if (targetedKey === 'limb') {
-      const currentItems = targetCharacter.inventory || [];
-      dropdownOptions = currentItems.map((item, idx) => 
-        new StringSelectMenuOptionBuilder()
-          .setLabel((item.Name || item.name || item.key || `Item ${idx}`).substring(0, 100))
-          .setValue(String(idx))
-      );
-      placeholderText = 'Select an item to destroy...';
-    } 
-    else if (targetedKey === 'strain') {
-      const activeTags = targetCharacter.tags || [];
-      dropdownOptions = activeTags.map((tag, idx) => 
-        new StringSelectMenuOptionBuilder()
-          .setLabel(tag.substring(0, 100))
-          .setValue(String(idx))
-      );
-      placeholderText = 'Select a tag to disable...';
-    }
+        try {
+          fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
+        } catch (err) {
+          console.error(err);
+        }
 
-    // Graceful fallback if the targeted target array is completely empty
-    if (dropdownOptions.length === 0) {
-      targetCharacter.injuries.push(injuryLogEntry);
-      try {
-        fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
-      } catch (err) { /* log err */ }
+        await i.update({
+          content: `Injury Sustained: **<${userChoiceMatch.label}>**`,
+          components: []
+        });
 
-      await injuryBtnInteraction.update({
-        content: `Injury Sustained: **<${userChoiceMatch.label}>** (No valid targets available to disable/destroy)`,
-        components: []
-      });
-      await interaction.followUp({
-        content: `💥 **${targetCharacter.name}** sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`! however, no active assets were available to lose.`
-      });
-      collector.stop();
-      return;
-    }
+        await interaction.followUp({
+          content: `💥 **${targetCharacter.name}** has sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`! *(${userChoiceMatch.desc})*`
+        });
 
-    // Construct and serve the String Select Menu components inside the ephemeral view
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`injury_dropdown_${targetedKey}`)
-      .setPlaceholder(placeholderText)
-      .addOptions(dropdownOptions);
-
-    const dropdownRow = new ActionRowBuilder().addComponents(selectMenu);
-
-    const dropdownPrompt = await injuryBtnInteraction.update({
-      content: `🚨 **Injury Mechanics Choice Required:** You selected **<${userChoiceMatch.label}>**. Please declare your casualty loss below:`,
-      components: [dropdownRow],
-      fetchReply: true
-    });
-
-    const dropdownCollector = dropdownPrompt.createMessageComponentCollector({
-      componentType: ComponentType.StringSelect,
-      time: 60000
-    });
-
-    dropdownCollector.on('collect', async (menuInteraction) => {
-      if (menuInteraction.user.id !== interaction.user.id) {
-        await menuInteraction.reply({ content: 'This selection window belongs to another user instance.', ephemeral: true });
+        collector.stop();
         return;
       }
 
-      // Re-read DB right before executing modifications to secure multi-user concurrency safety
+      // Prepare Dropdowns for targeted modifications (Brain, Limb, Strain)
+      let dropdownOptions = [];
+      let placeholderText = '';
+
+      if (targetedKey === 'brain') {
+        const activePerks = (targetCharacter.perks || []).filter(p => !p.inactive);
+        dropdownOptions = activePerks.map((p, idx) => 
+          new StringSelectMenuOptionBuilder()
+            .setLabel((p.Name || p.name || p.key || `Perk ${idx}`).substring(0, 100))
+            .setValue(String(idx))
+        );
+        placeholderText = 'Select a perk to disable...';
+      } 
+      else if (targetedKey === 'limb') {
+        const currentItems = targetCharacter.inventory || [];
+        dropdownOptions = currentItems.map((item, idx) => 
+          new StringSelectMenuOptionBuilder()
+            .setLabel((item.Name || item.name || item.key || `Item ${idx}`).substring(0, 100))
+            .setValue(String(idx))
+        );
+        placeholderText = 'Select an item to destroy...';
+      } 
+      else if (targetedKey === 'strain') {
+        const activeTags = targetCharacter.tags || [];
+        dropdownOptions = activeTags.map((tag, idx) => 
+          new StringSelectMenuOptionBuilder()
+            .setLabel(tag.substring(0, 100))
+            .setValue(String(idx))
+        );
+        placeholderText = 'Select a tag to disable...';
+      }
+
+      // Fallback logic for empty array contexts
+      if (dropdownOptions.length === 0) {
+        targetCharacter.injuries.push(injuryLogEntry);
+        try {
+          fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
+        } catch (err) {}
+
+        await i.update({
+          content: `Injury Sustained: **<${userChoiceMatch.label}>** (No assets available to lose)`,
+          components: []
+        });
+        await interaction.followUp({
+          content: `💥 **${targetCharacter.name}** sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`! However, no active assets were available to lose.`
+        });
+        collector.stop();
+        return;
+      }
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId(`injury_dropdown_${targetedKey}`)
+        .setPlaceholder(placeholderText)
+        .addOptions(dropdownOptions);
+
+      const dropdownRow = new ActionRowBuilder().addComponents(selectMenu);
+
+      // Transition the view to show the select dropdown menu layout smoothly
+      await i.update({
+        content: `🚨 **Injury Mechanics Choice Required:** You selected **<${userChoiceMatch.label}>**. Please declare your casualty loss below:`,
+        components: [dropdownRow]
+      });
+    }
+
+    // --- STAGE 2: HANDLE SELECT MENU SUBMISSIONS ---
+    else if (i.customId.startsWith('injury_dropdown_')) {
+      const targetedKey = i.customId.replace('injury_dropdown_', '');
+      const labelMap = { brain: 'Brain', limb: 'Limb', strain: 'Strain' };
+      const descMap = {
+        brain: 'Suffer cognitive fog. Lose access to a perk.',
+        limb: 'Critically fumble. Destroy one item.',
+        strain: 'Forget yourself. Lose access to a tag.'
+      };
+
       let finalDb = {};
       try {
         const finalRaw = fs.readFileSync(dataPath, 'utf8');
-        finalDb = finalRaw.trim() ? JSON.parse(finalRaw) : freshDb;
+        finalDb = finalRaw.trim() ? JSON.parse(finalRaw) : {};
       } catch (err) {
-        finalDb = freshDb;
+        console.error(err);
       }
-      const finalChar = finalDb[userId].characters[finalDb[userId].activeIndex];
-      
-      const selectedIndex = parseInt(menuInteraction.values[0]);
+      const finalChar = finalDb[userId]?.characters?.[finalDb[userId].activeIndex];
+      if (!finalChar) return;
+
+      const selectedIndex = parseInt(i.values[0]);
       let systemicAnnouncementDetail = '';
 
-      // Append core injury tracking block
       finalChar.injuries = finalChar.injuries || [];
-      finalChar.injuries.push(injuryLogEntry);
+      finalChar.injuries.push({
+        sourceAttribute: target,
+        classification: labelMap[targetedKey],
+        mechanicsText: descMap[targetedKey],
+        loggedAt: new Date().toISOString()
+      });
+
+      finalChar.inactivePerks = finalChar.inactivePerks || [];
+      finalChar.inactiveItems = finalChar.inactiveItems || [];
+      finalChar.inactiveTags = finalChar.inactiveTags || [];
 
       if (targetedKey === 'brain') {
-        // Filter out already inactive ones to ensure index alignment matching dropdown selections
         const activePerks = (finalChar.perks || []).filter(p => !p.inactive);
         const targetedPerk = activePerks[selectedIndex];
-        
-        // Mark inline inside characters.perks array
-        targetedPerk.inactive = true;
-        targetedPerk.brainInjury = true;
-        
-        // Push copy reference to restoration array
-        finalChar.inactivePerks.push(targetedPerk);
-        systemicAnnouncementDetail = `Disabling Perk: **${targetedPerk.Name || targetedPerk.name || targetedPerk.key}**`;
+        if (targetedPerk) {
+          targetedPerk.inactive = true;
+          targetedPerk.brainInjury = true;
+          finalChar.inactivePerks.push(targetedPerk);
+          systemicAnnouncementDetail = `Disabling Perk: **${targetedPerk.Name || targetedPerk.name || targetedPerk.key}**`;
+        }
       } 
       else if (targetedKey === 'limb') {
-        // Remove item entirely from inventory pool
-        const [destroyedItem] = finalChar.inventory.splice(selectedIndex, 1);
-        
-        // Save to restoration container array
-        finalChar.inactiveItems.push(destroyedItem);
-        systemicAnnouncementDetail = `Destroyed Item: **${destroyedItem.Name || destroyedItem.name || destroyedItem.key}**`;
+        if (finalChar.inventory && finalChar.inventory[selectedIndex]) {
+          const [destroyedItem] = finalChar.inventory.splice(selectedIndex, 1);
+          finalChar.inactiveItems.push(destroyedItem);
+          systemicAnnouncementDetail = `Destroyed Item: **${destroyedItem.Name || destroyedItem.name || destroyedItem.key}**`;
+        }
       } 
       else if (targetedKey === 'strain') {
-        // Remove tag entirely from active tag pool
-        const [disabledTag] = finalChar.tags.splice(selectedIndex, 1);
-        
-        // Save to restoration container array
-        finalChar.inactiveTags.push(disabledTag);
-        systemicAnnouncementDetail = `Disabling Tag: ***${disabledTag}***`;
+        if (finalChar.tags && finalChar.tags[selectedIndex]) {
+          const [disabledTag] = finalChar.tags.splice(selectedIndex, 1);
+          finalChar.inactiveTags.push(disabledTag);
+          systemicAnnouncementDetail = `Disabling Tag: ***${disabledTag}***`;
+        }
       }
 
-      // Commit all structural asset deletions/flags safely to JSON disk
       try {
         fs.writeFileSync(dataPath, JSON.stringify(finalDb, null, 2), 'utf8');
       } catch (err) {
-        console.error('Failed saving final item/tag/perk dropdown destruction changes to disk', err);
+        console.error(err);
       }
 
-      await menuInteraction.update({
-        content: `✅ **Casualty Confirmed:** ${systemicAnnouncementDetail}`,
+      // Confirm visually to the user that the selection cleared out successfully
+      await i.update({
+        content: `**Injury Sustained:** ${systemicAnnouncementDetail}`,
         components: []
       });
 
       await interaction.followUp({
-        content: `💥 **${finalChar.name}** has sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`!\n⚠️ **Consequence Applied:** ${systemicAnnouncementDetail}.`
+        content: `${finalChar.name} has sustained a **${target} Injury**: \`<${labelMap[targetedKey]}>\`!\n⚠️ **Consequence Applied:** ${systemicAnnouncementDetail}.`
       });
 
-      dropdownCollector.stop();
-    });
-
-    collector.stop();
+      collector.stop();
+    }
   });
 }

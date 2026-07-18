@@ -432,8 +432,7 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
                 });
 
                 await interaction.followUp({
-                  content: `${dChar.name} dies. A backup of their consciousness is placed in a refabricated body at the Node.
-                  Attributes reset to baseline (BODY: **${dChar[bodyKey]}**, MIND: **${dChar[mindKey]}**)\n• All \`<injuries>\` removed.\n• Gained items dropped (retained original 2 starter items).\n• All custom \`+memories+\` forgotten.${rankLostText}`
+                  content: `${dChar.name} dies. A backup of their consciousness is placed in a refabricated body at the Node.\nAttributes reset to baseline (BODY: **${dChar[bodyKey]}**, MIND: **${dChar[mindKey]}**)\n• All \`<injuries>\` removed.\n• Gained items dropped (retained original 2 starter items).\n• All custom \`+memories+\` forgotten.${rankLostText}`
                 });
               }
             });
@@ -556,12 +555,12 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         }
 
         await i.update({
-          content: `Injury Sustained: **<${userChoiceMatch.label}>** (+1 Load applied)`,
+          content: `Injury Sustained: **<${userChoiceMatch.label}>** (+1# to load applied)`,
           components: []
         });
 
         await interaction.followUp({
-          content: `${targetCharacter.name} has sustained a **${target} Injury: \`<${userChoiceMatch.label}>\`! *(${userChoiceMatch.desc})* +1#.`
+          content: `${targetCharacter.name} has sustained a ${target} Injury: \`<${userChoiceMatch.label}>\`! (${userChoiceMatch.desc}) +1# to load.`
         });
 
         collector.stop();

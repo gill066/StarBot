@@ -12,7 +12,7 @@ const { replySafely } = require('../../utils/interaction');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('heal_injury')
-    .setDescription('Heal an active injury from your profile and restore any lost assets.'),
+    .setDescription('Heal an active <injury> from your profile and restore any lost assets.'),
 
   async execute(interaction) {
     const dataPath = path.join(__dirname, '..', '..', 'player_data.json');
@@ -36,7 +36,7 @@ module.exports = {
 
     // Verify there are actually injuries to manage
     if (!character.injuries || character.injuries.length === 0) {
-      await replySafely(interaction, { content: 'You do not have any active injuries to heal!', ephemeral: true });
+      await replySafely(interaction, { content: 'You do not have any active <injuries> to heal.', ephemeral: true });
       return;
     }
 
@@ -50,13 +50,13 @@ module.exports = {
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('heal_injury_select')
-      .setPlaceholder('Choose an injury profile to treat...')
+      .setPlaceholder('Choose an <injury> to treat...')
       .addOptions(options);
 
     const row = new ActionRowBuilder().addComponents(selectMenu);
 
     const response = await replySafely(interaction, {
-      content: '🏥 **Medical Station:** Select which ongoing trauma you are providing treatment for:',
+      content: 'Select which <injury> to treat:',
       components: [row],
       ephemeral: true
     });
@@ -106,7 +106,7 @@ module.exports = {
             delete mainPerk.inactive;
             delete mainPerk.brainInjury;
           }
-          resolutionText = `Perk access re-established: **${name}**`;
+          resolutionText = `Regained **${name}**`;
         } else {
           resolutionText = 'Cognitive fog dissipated (no disabled perks found to return).';
         }
@@ -118,7 +118,7 @@ module.exports = {
         // Reverse the halving action accurately
         activeChar[capacityKey] = currentCap * 2;
         activeChar.coreInjury = false;
-        resolutionText = `Internal stabilization achieved. Carrying CAPACITY restored to **${activeChar[capacityKey]}#**`;
+        resolutionText = `Carrying CAPACITY restored to **${activeChar[capacityKey]}#**`;
       } 
       else if (classificationLower === 'limb') {
         if (activeChar.inactiveItems && activeChar.inactiveItems.length > 0) {
@@ -127,7 +127,7 @@ module.exports = {
           activeChar.inventory.push(restored);
           resolutionText = `Item repaired/recovered to inventory: **${restored.Name || restored.name || restored.key}**`;
         } else {
-          resolutionText = 'Limb mobility restored (no destroyed item back-ups found to recreate).';
+          resolutionText = '<Limb injury> treated (no destroyed item back-ups found to recreate).';
         }
       } 
       else if (classificationLower === 'strain') {
@@ -135,14 +135,14 @@ module.exports = {
           const restored = activeChar.inactiveTags.pop();
           activeChar.tags = activeChar.tags || [];
           activeChar.tags.push(restored);
-          resolutionText = `Tag remembered and unlocked: ***${restored}***`;
+          resolutionText = `*Tag* reactivated: ***${restored}***`;
         } else {
-          resolutionText = 'Identity strain cleared (no hidden tags found to return).';
+          resolutionText = '<Strain injury> treated (no hidden tags found to return).';
         }
       } 
       else {
         // Fallback for Mind Alignment traits (Fight, Flight, Freeze, Fawn)
-        resolutionText = `Mind state balanced. The behavioral condition trait \`<${chosenInjury.classification}>\` has subsided.`;
+        resolutionText = `\`<${chosenInjury.classification}>\` has been treated.`;
       }
 
       // Remove the specific injury index object cleanly from the active list tracking array
@@ -157,13 +157,13 @@ module.exports = {
 
       // Clear the menu for the user privately
       await menuInteraction.update({
-        content: `✅ **Healed:** Successfully resolved **<${chosenInjury.classification}>**!`,
+        content: `Healed **<${chosenInjury.classification}>`,
         components: []
       });
 
       // Announce the medical recovery publicly
       await interaction.followUp({
-        content: `🩺 **${activeChar.name}** has undergone treatment and successfully closed their **<${chosenInjury.classification}>** injury!\n✨ *Consequence Reversed:* ${resolutionText}`
+        content: `${activeChar.name}'s <${chosenInjury.classification} injury> healed - ${resolutionText}`
       });
 
       collector.stop();

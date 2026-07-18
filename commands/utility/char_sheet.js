@@ -86,8 +86,7 @@ module.exports = {
       ? `\n**Injuries:** ${entry.injuries.map(i => `**<${i.classification}>** *${i.mechanicsText}*`).join(', ')}`
       : '';
 
-    const description = `**Home:** ${entry.home}   **Work:** *${entry.work}*
-**Type:** *${entry.type}*
+    const description = `**Home:** ${entry.home}    **Work:** *${entry.work}*    **Type:** *${entry.type}*
 **Zone:** ${entry.zone} | **Body:** ${entry.body} | **Mind:** ${entry.mind}
 **Perks:**\n${perksDisplay}
 **Inventory:**\n${inventory}

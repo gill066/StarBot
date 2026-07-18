@@ -1,7 +1,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const sourcePath = path.resolve(__dirname, '..', 'player_data.json');
+// Target source file paths
+const playerSourcePath = path.resolve(__dirname, '..', 'player_data.json');
+const showrunnerSourcePath = path.resolve(__dirname, '..', 'showrunner_data.json');
+
 const candidateDirs = [
   process.env.RAILWAY_VOLUME_MOUNT_PATH,
   process.env.DATA_PATH,
@@ -9,8 +12,13 @@ const candidateDirs = [
   path.resolve(__dirname, '..', 'data'),
 ].filter(Boolean);
 
-let syncTimer = null;
-let activeDestinationPath = null;
+// Independent write debouncers to prevent concurrency conflicts
+let playerSyncTimer = null;
+let showrunnerSyncTimer = null;
+
+// Track storage directory pathways
+let activePlayerDestPath = null;
+let activeShowrunnerDestPath = null;
 
 function resolveDestinationDirectory() {
   for (const candidateDir of candidateDirs) {
@@ -18,110 +26,155 @@ function resolveDestinationDirectory() {
       fs.mkdirSync(candidateDir, { recursive: true });
       return candidateDir;
     } catch (error) {
-      // Try the next candidate.
+      // Try the next candidate path down the line
     }
   }
 
   throw new Error(`Unable to create a writable sync directory from: ${candidateDirs.join(', ')}`);
 }
 
-function getVolumeDataPath() {
-  const destinationDir = resolveDestinationDirectory();
-  return path.join(destinationDir, 'player_data.json');
-}
+// ============================================================================
+// INTERNAL REFACTOR GENERICS (Keeps the code DRY)
+// ============================================================================
 
-function restorePlayerDataFromVolumeIfNeeded() {
+function restoreFileFromVolume(sourcePath, fileName) {
   try {
-    const volumeDataPath = getVolumeDataPath();
+    const destinationDir = resolveDestinationDirectory();
+    const volumeDataPath = path.join(destinationDir, fileName);
 
     if (!fs.existsSync(volumeDataPath)) {
-      return false;
+      return null;
     }
 
     const volumeRaw = fs.readFileSync(volumeDataPath, 'utf8');
     if (!volumeRaw.trim()) {
-      return false;
+      return null;
     }
 
     if (fs.existsSync(sourcePath)) {
       const localRaw = fs.readFileSync(sourcePath, 'utf8');
       if (localRaw.trim()) {
-        return false;
+        return null; // Local copy is alive and non-empty; do not overwrite
       }
     }
 
     fs.writeFileSync(sourcePath, volumeRaw, 'utf8');
-    activeDestinationPath = volumeDataPath;
-    console.log(`[data-sync] Restored player data from volume to ${sourcePath}`);
-    return true;
+    console.log(`[data-sync] Restored ${fileName} from volume mount path over to ${sourcePath}`);
+    return volumeDataPath;
   } catch (error) {
-    console.error(`[data-sync] Failed to restore player data from volume`, error);
-    return false;
+    console.error(`[data-sync] Failed to restore ${fileName} from volume tracking`, error);
+    return null;
   }
 }
 
-function syncPlayerDataToVolume() {
+function syncFileToVolume(sourcePath, fileName) {
   try {
     if (!fs.existsSync(sourcePath)) {
       console.warn(`[data-sync] Source file not found at ${sourcePath}`);
-      return;
+      return null;
     }
 
     const raw = fs.readFileSync(sourcePath, 'utf8');
     const data = raw.trim() ? JSON.parse(raw) : {};
     const destinationDir = resolveDestinationDirectory();
-    const destinationPath = path.join(destinationDir, 'player_data.json');
+    const destinationPath = path.join(destinationDir, fileName);
     const payload = `${JSON.stringify(data, null, 2)}\n`;
 
     if (fs.existsSync(destinationPath)) {
       const existing = fs.readFileSync(destinationPath, 'utf8');
       if (existing === payload) {
-        activeDestinationPath = destinationPath;
-        return;
+        return destinationPath; // Data matches exactly, bypass writing sequence
       }
     }
 
     fs.writeFileSync(destinationPath, payload, 'utf8');
-    activeDestinationPath = destinationPath;
-    console.log(`[data-sync] Synced player data to ${destinationPath}`);
+    console.log(`[data-sync] Synced ${fileName} structural updates to ${destinationPath}`);
+    return destinationPath;
   } catch (error) {
-    console.error(`[data-sync] Failed to sync player data to volume`, error);
+    console.error(`[data-sync] Failed to sync ${fileName} to volume array mapping`, error);
+    return null;
   }
 }
 
-function scheduleSync() {
-  if (syncTimer) {
-    clearTimeout(syncTimer);
-  }
-
-  syncTimer = setTimeout(() => {
-    syncPlayerDataToVolume();
-  }, 250);
-}
+// ============================================================================
+// PLAYER DATA LIFECYCLE
+// ============================================================================
 
 function startPlayerDataVolumeSync() {
   try {
-    if (!fs.existsSync(sourcePath)) {
+    if (!fs.existsSync(playerSourcePath)) {
       console.warn(`[data-sync] No local player_data.json found yet; checking mounted volume for persisted data`);
     }
 
-    restorePlayerDataFromVolumeIfNeeded();
-    syncPlayerDataToVolume();
+    const restored = restoreFileFromVolume(playerSourcePath, 'player_data.json');
+    if (restored) activePlayerDestPath = restored;
 
-    fs.watchFile(sourcePath, { interval: 500 }, () => {
-      scheduleSync();
+    const synced = syncFileToVolume(playerSourcePath, 'player_data.json');
+    if (synced) activePlayerDestPath = synced;
+
+    fs.watchFile(playerSourcePath, { interval: 500 }, () => {
+      if (playerSyncTimer) clearTimeout(playerSyncTimer);
+      playerSyncTimer = setTimeout(() => {
+        const p = syncFileToVolume(playerSourcePath, 'player_data.json');
+        if (p) activePlayerDestPath = p;
+      }, 250);
     });
 
-    console.log(`[data-sync] Watching ${sourcePath} for changes`);
+    console.log(`[data-sync] Watching ${playerSourcePath} for changes`);
   } catch (error) {
-    console.error(`[data-sync] Could not start watcher`, error);
+    console.error(`[data-sync] Could not start player data watcher module`, error);
   }
+}
+
+function syncPlayerDataToVolume() {
+  const p = syncFileToVolume(playerSourcePath, 'player_data.json');
+  if (p) activePlayerDestPath = p;
+}
+
+// ============================================================================
+// SHOWRUNNER DATA LIFECYCLE
+// ============================================================================
+
+function startShowrunnerDataVolumeSync() {
+  try {
+    if (!fs.existsSync(showrunnerSourcePath)) {
+      console.warn(`[data-sync] No local showrunner_data.json found yet; checking mounted volume for persisted data`);
+    }
+
+    const restored = restoreFileFromVolume(showrunnerSourcePath, 'showrunner_data.json');
+    if (restored) activeShowrunnerDestPath = restored;
+
+    const synced = syncFileToVolume(showrunnerSourcePath, 'showrunner_data.json');
+    if (synced) activeShowrunnerDestPath = synced;
+
+    fs.watchFile(showrunnerSourcePath, { interval: 500 }, () => {
+      if (showrunnerSyncTimer) clearTimeout(showrunnerSyncTimer);
+      showrunnerSyncTimer = setTimeout(() => {
+        const s = syncFileToVolume(showrunnerSourcePath, 'showrunner_data.json');
+        if (s) activeShowrunnerDestPath = s;
+      }, 250);
+    });
+
+    console.log(`[data-sync] Watching ${showrunnerSourcePath} for changes`);
+  } catch (error) {
+    console.error(`[data-sync] Could not start showrunner data watcher module`, error);
+  }
+}
+
+function syncShowrunnerDataToVolume() {
+  const s = syncFileToVolume(showrunnerSourcePath, 'showrunner_data.json');
+  if (s) activeShowrunnerDestPath = s;
 }
 
 module.exports = {
   startPlayerDataVolumeSync,
   syncPlayerDataToVolume,
+  startShowrunnerDataVolumeSync,
+  syncShowrunnerDataToVolume,
   get destinationPath() {
-    return activeDestinationPath;
+    return activePlayerDestPath;
+  },
+  get showrunnerDestinationPath() {
+    return activeShowrunnerDestPath;
   },
 };

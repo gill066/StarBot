@@ -2,8 +2,11 @@
 const { Client, GatewayIntentBits, Partials, Collection, Events, MessageFlags } = require("discord.js");
 const fs = require('node:fs');
 const path = require('node:path');
-const { startPlayerDataVolumeSync } = require('./services/player_data_volume_sync');
+const { startPlayerDataVolumeSync, startShowrunnerDataVolumeSync } = require('./utils/sync_manager'); // Update path accordingly
 
+// Start your cluster tracking managers
+startPlayerDataVolumeSync();
+startShowrunnerDataVolumeSync();
 
 // Use GatewayIntentBits constants. Comment privileged intents if you don't
 // plan to enable them in the Developer Portal.
@@ -21,7 +24,6 @@ const client = new Client({
 
 // LogIn
 require('dotenv').config();
-startPlayerDataVolumeSync();
 client.login(process.env.TOKEN);
 
 // Fires when bot is online

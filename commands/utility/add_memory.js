@@ -13,7 +13,7 @@ const path = require('path');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('add_memory')
-    .setDescription('Spend 5 XP while In The Zone to unlock a permanent +memory+ from the current episode.'),
+    .setDescription('Spend 5 XP while 💫 I N T H E Z O N E 💫 to unlock a permanent +memory+ from the current episode.'),
 
   async execute(interaction) {
     const playerDataPath = path.join(__dirname, '..', '..', 'player_data.json');

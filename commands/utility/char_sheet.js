@@ -86,12 +86,17 @@ module.exports = {
       ? `\n**Injuries:** ${entry.injuries.map(i => `**<${i.classification}>** *${i.mechanicsText}*`).join(', ')}`
       : '';
 
+    // --- DYNAMIC MEMORIES DISPLAY ---
+    const memoriesDisplay = Array.isArray(entry.memories) && entry.memories.length
+      ? `\n**Memories:** ${entry.memories.map(m => `+${m}+`).join(', ')}`
+      : '';
+
     const description = `**Home:** ${entry.home} | **Work:** *${entry.work}* | **Type:** *${entry.type}*
 **Zone:** ${entry.zone} | **Body:** ${entry.body} | **Mind:** ${entry.mind}
 **Perks:**\n${perksDisplay}
 **Inventory:**\n${inventory}
 **Capacity:** ${entry.load || 0} / ${entry.capacity || 0}#
-**Tags:** *${entry.tags?.join(', ') || 'None'}*${injuriesDisplay}
+**Tags:** *${entry.tags?.join(', ') || 'None'}*${injuriesDisplay}${memoriesDisplay}
 **XP:** ${entry.xp || 0} | **Rank:** ${entry.rank || 1}${zoneFooter}`;
 
     // Add slot metadata in the embed footer so players know their active list context

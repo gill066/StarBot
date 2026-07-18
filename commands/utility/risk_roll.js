@@ -147,11 +147,9 @@ module.exports = {
     await replySafely(interaction, { content: replyMsg });
 
     // === NEW LOGIC: RESOURCEFUL PERK CHECK ===
-    // Scan the perks array for a perk with the key "resourceful" (case-insensitive)
     const characterPerks = activeCharacter.perks || [];
     const resourcefulPerk = characterPerks.find(p => String(p.key || '').toLowerCase() === 'resourceful');
 
-    // Only proceed if they actually have the perk, failed/mixed the roll, and have uses remaining
     if (resourcefulPerk && (outcome === 'MIXED' || outcome === 'FAILURE') && Number(resourcefulPerk.Uses) > 0) {
       
       const currentUses = Number(resourcefulPerk.Uses);
@@ -180,7 +178,6 @@ module.exports = {
           return;
         }
 
-        // Re-read DB file from disk for data security (concurrency safety)
         let currentDb = {};
         try {
           const currentRaw = fs.readFileSync(dataPath, 'utf8');
@@ -194,7 +191,6 @@ module.exports = {
         const freshPerks = freshCharacter.perks || [];
         const freshResourceful = freshPerks.find(p => String(p.key || '').toLowerCase() === 'resourceful');
 
-        // Check if charges were depleted while waiting
         if (!freshResourceful || Number(freshResourceful.Uses) <= 0) {
           await btnInteraction.update({
             content: '❌ You no longer have any uses of Resourceful remaining!',
@@ -204,50 +200,40 @@ module.exports = {
           return;
         }
 
-        // Deduct 1 usage point
         freshResourceful.Uses = Number(freshResourceful.Uses) - 1;
-
-        // Roll the extra 1d6
         const extraRoll = Math.floor(Math.random() * 6) + 1;
         
-        // Evaluate math changes
         const extraSuccess = target === 'BODY' ? extraRoll >= zoneValue : extraRoll <= zoneValue;
         if (extraSuccess) successCount += 1;
 
-        // Check for exact zone value shifts
         let secondaryZoneMsg = '';
         if (extraRoll === zoneValue && !freshCharacter.inTheZone) {
           freshCharacter.inTheZone = true;
           secondaryZoneMsg = `\nYou are now 💫 I N T H E Z O N E 💫`;
         }
 
-        // Save updated uses and optional "In The Zone" changes to JSON database
         try {
           fs.writeFileSync(dataPath, JSON.stringify(currentDb, null, 2), 'utf8');
         } catch (err) {
           console.error('Failed to deduct Resourceful usage ↺s', err);
         }
 
-        // Recalculate final outcome tier
         let finalOutcome;
         if (successCount >= 2) finalOutcome = 'SUCCESS';
         else if (successCount === 1) finalOutcome = 'MIXED';
         else finalOutcome = 'FAILURE';
 
-        // Update the user's private view
         await btnInteraction.update({
           content: `You rolled a **[${extraRoll}]**.\n**New Total Successes:** ${successCount} (${finalOutcome})${secondaryZoneMsg}\n${freshResourceful.Uses}↺ remaining`,
           components: [] 
         });
 
-        // Announce the perk consumption publicly to the channel
         await interaction.followUp({
           content: `${activeCharacter.name} used a ↺ of __Resourceful__ (${freshResourceful.Uses}↺ remaining) to roll an extra 1d6! Result: **[${extraRoll}]**. New Outcome: **${finalOutcome}**.${secondaryZoneMsg}`
         });
 
-        // If the re-roll STILL yields a failure, run the injury check sequence
         if (finalOutcome === 'FAILURE') {
-          await runInjurySequence(interaction, target, dataPath, userId);
+          await runInjurySequence(interaction, target, dataPath, userId, zoneValue);
         }
 
         collector.stop();
@@ -264,24 +250,20 @@ module.exports = {
           );
           await interaction.editReply({ components: [disabledRow] }).catch(() => {});
           
-          // If they didn't utilize Resourceful and it was an outright failure, process injury now
           if (outcome === 'FAILURE') {
-            await runInjurySequence(interaction, target, dataPath, userId);
+            await runInjurySequence(interaction, target, dataPath, userId, zoneValue);
           }
         }
       });
     } else if (outcome === 'FAILURE') {
-      // No Resourceful alternatives available, jump straight into processing injury updates
-      await runInjurySequence(interaction, target, dataPath, userId);
+      await runInjurySequence(interaction, target, dataPath, userId, zoneValue);
     }
-    // === END OF RESOURCEFUL PERK LOGIC ===
   }
 };
 
 // === SUB-PROCESS HANDLERS: INJURY LOGIC WORKFLOWS ===
 
-async function runInjurySequence(interaction, target, dataPath, userId) {
-  // 1. Core State Re-Verification
+async function runInjurySequence(interaction, target, dataPath, userId, zoneValue) {
   let currentDb = {};
   try {
     const raw = fs.readFileSync(dataPath, 'utf8');
@@ -294,19 +276,15 @@ async function runInjurySequence(interaction, target, dataPath, userId) {
   const activeCharacter = currentDb[userId]?.characters?.[currentDb[userId].activeIndex];
   if (!activeCharacter) return;
 
-  // Resolve matching case variant names inside profile schema safely
   const attrKey = Object.keys(activeCharacter).find(k => k.toUpperCase() === target.toUpperCase()) || target;
   const attributeScore = Number(activeCharacter[attrKey] ?? 0);
 
-  // Roll 1d6 mitigation check
   const injuryRoll = Math.floor(Math.random() * 6) + 1;
   const baseLogString = `⚠️ **Risk Roll Failure!** Checking for fallback protection... rolled a **${injuryRoll}** against your **${target}** score of **${attributeScore}**.`;
 
   if (injuryRoll <= attributeScore) {
-    // Immediate Injury required
     await presentInjuryChoices(interaction, target, dataPath, userId, baseLogString);
   } else {
-    // Above score: mitigation choices become available
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('injury_tough_it_out')
@@ -342,8 +320,127 @@ async function runInjurySequence(interaction, target, dataPath, userId) {
           const freshChar = freshDb[userId].characters[freshDb[userId].activeIndex];
           
           const oldScore = Number(freshChar[attrKey] ?? 0);
-          freshChar[attrKey] = Math.max(0, oldScore - 1);
 
+          // === INTERCEPT DEATH: IF DEDUCTION LEADS TO ZERO STAT ===
+          if (oldScore - 1 <= 0) {
+            collector.stop();
+
+            const deathRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId('death_confirm_yes')
+                .setLabel('Yes, Accept Death')
+                .setStyle(ButtonStyle.Danger),
+              new ButtonBuilder()
+                .setCustomId('death_confirm_no')
+                .setLabel('No, Choose Life')
+                .setStyle(ButtonStyle.Secondary)
+            );
+
+            const deathPrompt = await btnInteraction.update({
+              content: `💀 **CRITICAL THRESHOLD REACHED:** Reducing your **${target}** score to 0 will cause **${freshChar.name}** to DIE!\n\nAre you sure you want to proceed? This will trigger a character rebirth, resetting stats, removing memories, and stripping down equipment back to character creation baselines.`,
+              components: [deathRow]
+            });
+
+            const deathCollector = deathPrompt.createMessageComponentCollector({
+              componentType: ComponentType.Button,
+              time: 60000
+            });
+
+            deathCollector.on('collect', async (deathInteraction) => {
+              if (deathInteraction.user.id !== interaction.user.id) {
+                await deathInteraction.reply({ content: 'This is not your confirmation prompt.', ephemeral: true });
+                return;
+              }
+
+              if (deathInteraction.customId === 'death_confirm_no') {
+                deathCollector.stop();
+                // Route them back into picking an injury asset instead of dying
+                await presentInjuryChoices(interaction, target, dataPath, userId, `❤️ You chose to preserve your life! You must select an injury profile alignment instead:`, deathInteraction);
+                return;
+              }
+
+              if (deathInteraction.customId === 'death_confirm_yes') {
+                deathCollector.stop();
+
+                const dRaw = fs.readFileSync(dataPath, 'utf8');
+                const dDb = dRaw.trim() ? JSON.parse(dRaw) : freshDb;
+                const dChar = dDb[userId].characters[dDb[userId].activeIndex];
+
+                const currentZone = Number(dChar.zone ?? zoneValue ?? 0);
+                const bodyKey = Object.keys(dChar).find(k => k.toLowerCase() === 'body') || 'body';
+                const mindKey = Object.keys(dChar).find(k => k.toLowerCase() === 'mind') || 'mind';
+
+                // 1. Reset baseline attributes formulas
+                dChar[bodyKey] = 6 - currentZone;
+                dChar[mindKey] = currentZone - 1;
+
+                // 2. Keep only the two starter inventory items
+                dChar.inventory = (dChar.inventory || []).slice(0, 2);
+
+                // 3. Clear core injuries and restore halved capacity if active
+                if (dChar.coreInjury) {
+                  const capacityKey = Object.keys(dChar).find(k => k.toUpperCase() === 'CAPACITY') || 'capacity';
+                  dChar[capacityKey] = Number(dChar[capacityKey] ?? 0) * 2;
+                }
+
+                // Restore brain injury disabled perks
+                if (Array.isArray(dChar.perks)) {
+                  dChar.perks.forEach(p => {
+                    p.inactive = false;
+                    delete p.brainInjury;
+                  });
+                }
+
+                // Restore strain disabled tags
+                if (Array.isArray(dChar.inactiveTags)) {
+                  dChar.tags = dChar.tags || [];
+                  dChar.inactiveTags.forEach(t => {
+                    if (!dChar.tags.includes(t)) dChar.tags.push(t);
+                  });
+                }
+
+                // 4. Purge all remaining status penalty tracking trackers
+                dChar.injuries = [];
+                dChar.inactivePerks = [];
+                dChar.inactiveItems = [];
+                dChar.inactiveTags = [];
+                dChar.memories = [];
+                dChar.inTheZone = false;
+
+                // Recalculate item load math based on the 2 kept items
+                const loadKey = Object.keys(dChar).find(k => k.toUpperCase() === 'LOAD') || 'load';
+                let newLoad = 0;
+                dChar.inventory.forEach(item => {
+                  newLoad += Number(item.Weight ?? item.weight ?? 0);
+                });
+                dChar[loadKey] = newLoad;
+
+                // 5. Decrement character rank by 1 if higher than rank 1
+                const rankKey = Object.keys(dChar).find(k => k.toLowerCase() === 'rank') || 'rank';
+                let oldRank = Number(dChar[rankKey] || 1);
+                let rankLostText = '';
+                if (oldRank > 1) {
+                  dChar[rankKey] = oldRank - 1;
+                  rankLostText = `\n• Lost 1 Rank (Rank ${oldRank} → ${dChar[rankKey]}).`;
+                }
+
+                fs.writeFileSync(dataPath, JSON.stringify(dDb, null, 2), 'utf8');
+
+                await deathInteraction.update({
+                  content: `💀 **${dChar.name}** has passed away and been successfully reset to baseline.`,
+                  components: []
+                });
+
+                await interaction.followUp({
+                  content: `🚨 💀 **CHARACTER DEATH & REBIRTH** 💀 🚨\n**${dChar.name}** pushed their body to the absolute limit and has **DIED**!\n\nRe-stabilizing neural pathways and cloning metrics:\n• Attributes reset to baseline coordinates (BODY: **${dChar[bodyKey]}**, MIND: **${dChar[mindKey]}**)\n• All \`<injuries>\` and status penalties completely removed.\n• Extraneous equipment dropped (retained original 2 starter items).\n• All custom \`+memories+\` forgotten.${rankLostText}\n\n*A fresh echo steps out from the recovery pod...*`
+                });
+              }
+            });
+            return;
+          }
+
+          // Proceed with standard stat lowering loop if above 0
+          freshChar[attrKey] = Math.max(0, oldScore - 1);
           fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
 
           await btnInteraction.update({
@@ -360,7 +457,6 @@ async function runInjurySequence(interaction, target, dataPath, userId) {
         collector.stop();
       } else if (btnInteraction.customId === 'injury_take_the_hit') {
         collector.stop();
-        // Redirect into standard options flow via automated button interface updating
         await presentInjuryChoices(interaction, target, dataPath, userId, baseLogString, btnInteraction);
       }
     });
@@ -394,7 +490,6 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
   const finalPromptContent = `${statusContext}\n\n🚨 **Select your preferred Injury Profile alignment:**\n` + 
     rulesMap.map(i => `• **<${i.label}>**: ${i.desc}`).join('\n');
 
-  // Serve initial prompt view
   if (operationalButtonInteraction) {
     await operationalButtonInteraction.update({
       content: finalPromptContent,
@@ -408,14 +503,12 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
     });
   }
 
-  // Use a flat channel collector filtered by the active user to circumvent ephemeral caching bugs
   const collector = interaction.channel.createMessageComponentCollector({
     filter: (i) => i.user.id === interaction.user.id,
-    time: 120000 // 2-minute expiration lifeline window for the complete sequence
+    time: 120000 
   });
 
   collector.on('collect', async (i) => {
-    // --- STAGE 1: HANDLE INJURY BUTTON CLICKS ---
     if (i.customId.startsWith('select_inj_')) {
       const targetedKey = i.customId.replace('select_inj_', '');
       const userChoiceMatch = rulesMap.find(item => item.val === targetedKey);
@@ -442,11 +535,9 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
       targetCharacter.inactiveItems = targetCharacter.inactiveItems || [];
       targetCharacter.inactiveTags = targetCharacter.inactiveTags || [];
 
-      // Mind Injuries or Core Injury (No dropdown selection sequences required)
       if (!isBody || targetedKey === 'core') {
         targetCharacter.injuries.push(injuryLogEntry);
 
-        // --- ADDED: Increment load case-insensitively ---
         const loadKey = Object.keys(targetCharacter).find(k => k.toUpperCase() === 'LOAD') || 'load';
         targetCharacter[loadKey] = Number(targetCharacter[loadKey] ?? 0) + 1;
 
@@ -476,7 +567,6 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         return;
       }
 
-      // Prepare Dropdowns for targeted modifications (Brain, Limb, Strain)
       let dropdownOptions = [];
       let placeholderText = '';
 
@@ -508,11 +598,9 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         placeholderText = 'Select a *tag* to disable...';
       }
 
-      // Fallback logic for empty array contexts
       if (dropdownOptions.length === 0) {
         targetCharacter.injuries.push(injuryLogEntry);
 
-        // --- ADDED: Increment load case-insensitively ---
         const loadKey = Object.keys(targetCharacter).find(k => k.toUpperCase() === 'LOAD') || 'load';
         targetCharacter[loadKey] = Number(targetCharacter[loadKey] ?? 0) + 1;
 
@@ -538,14 +626,12 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
 
       const dropdownRow = new ActionRowBuilder().addComponents(selectMenu);
 
-      // Transition the view to show the select dropdown menu layout smoothly
       await i.update({
         content: `You selected <${userChoiceMatch.label}>. Which asset do you sacrifice?`,
         components: [dropdownRow]
       });
     }
 
-    // --- STAGE 2: HANDLE SELECT MENU SUBMISSIONS ---
     else if (i.customId.startsWith('injury_dropdown_')) {
       const targetedKey = i.customId.replace('injury_dropdown_', '');
       const labelMap = { brain: 'Brain', limb: 'Limb', strain: 'Strain' };
@@ -576,7 +662,6 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         loggedAt: new Date().toISOString()
       });
 
-      // --- ADDED: Increment load case-insensitively ---
       const loadKey = Object.keys(finalChar).find(k => k.toUpperCase() === 'LOAD') || 'load';
       finalChar[loadKey] = Number(finalChar[loadKey] ?? 0) + 1;
 
@@ -615,7 +700,6 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         console.error(err);
       }
 
-      // Confirm visually to the user that the selection cleared out successfully
       await i.update({
         content: `<Injury> sustained: ${systemicAnnouncementDetail} (+1 Load applied)`,
         components: []

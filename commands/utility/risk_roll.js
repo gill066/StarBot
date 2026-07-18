@@ -469,7 +469,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         });
 
         await interaction.followUp({
-          content: `💥 **${targetCharacter.name}** has sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`! *(${userChoiceMatch.desc})*\n⚠️ **Encumbrance Added:** +1 Load applied.`
+          content: `${targetCharacter.name} has sustained a **${target} Injury: \`<${userChoiceMatch.label}>\`! *(${userChoiceMatch.desc})* +1#.`
         });
 
         collector.stop();
@@ -521,11 +521,11 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         } catch (err) {}
 
         await i.update({
-          content: `Injury Sustained: **<${userChoiceMatch.label}>** (No assets available to lose, +1 Load applied)`,
+          content: `Injury Sustained: <${userChoiceMatch.label}> (No assets available to lose, +1#)`,
           components: []
         });
         await interaction.followUp({
-          content: `${targetCharacter.name} sustained a ${target} <injury>: \`<${userChoiceMatch.label}>\`! However, no active assets were available to lose.\n⚠️ **Encumbrance Added:** +1 Load applied.`
+          content: `${targetCharacter.name} sustained a ${target} <injury>: \`<${userChoiceMatch.label}>\`! However, no active assets were available to lose. +1#.`
         });
         collector.stop();
         return;
@@ -540,7 +540,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
 
       // Transition the view to show the select dropdown menu layout smoothly
       await i.update({
-        content: `You selected **<${userChoiceMatch.label}>**. Which asset do you sacrifice?`,
+        content: `You selected <${userChoiceMatch.label}>. Which asset do you sacrifice?`,
         components: [dropdownRow]
       });
     }
@@ -622,7 +622,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
       });
 
       await interaction.followUp({
-        content: `${finalChar.name} has sustained a **${target} Injury**: \`<${labelMap[targetedKey]}>\`!\n⚠️ **Consequences Applied:** ${systemicAnnouncementDetail} (+1 Load applied).`
+        content: `${finalChar.name} has sustained a ${target} <injury> \`<${labelMap[targetedKey]}>\`!\n⚠️ **Consequences Applied:** ${systemicAnnouncementDetail} (+1 Load applied).`
       });
 
       collector.stop();

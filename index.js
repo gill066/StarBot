@@ -2,7 +2,7 @@
 const { Client, GatewayIntentBits, Partials, Collection, Events, MessageFlags } = require("discord.js");
 const fs = require('node:fs');
 const path = require('node:path');
-const { startPlayerDataVolumeSync, startShowrunnerDataVolumeSync } = require('./utils/sync_manager'); // Update path accordingly
+const { startPlayerDataVolumeSync, startShowrunnerDataVolumeSync } = require('./services/player_data_volume_sync'); // Update path accordingly
 
 // Start your cluster tracking managers
 startPlayerDataVolumeSync();

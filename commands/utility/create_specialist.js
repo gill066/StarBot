@@ -10,9 +10,7 @@ module.exports = {
     const builder = new SlashCommandBuilder()
       .setName('create_specialist')
       .setDescription('Create a new StarNet specialist')
-      .addStringOption(option => option.setName('name').setDescription('Specialist name').setRequired(true))
-      // --- NEW PRONOUNS OPTION ---
-      .addStringOption(option => option.setName('pronouns').setDescription('Specialist pronouns (e.g., she/her, they/them)').setRequired(false));
+      .addStringOption(option => option.setName('name').setDescription('Specialist name').setRequired(true));
 
     const addChoicesFrom = (sourceObj, optionName, description, required, labelFn) => {
       try {
@@ -44,12 +42,18 @@ module.exports = {
       starnet = {};
     }
 
+    // Adding all REQUIRED options first
     addChoicesFrom(starnet.homes || {}, 'home', 'Specialist home', true, (k) => k);
     addChoicesFrom(starnet.works || {}, 'work', 'Specialist work', true, (k, v) => `${k} — ${v.Name}`);
     addChoicesFrom(starnet.types || {}, 'type', 'Specialist type', true, (k) => k);
     addChoicesFrom(starnet.zone || {}, 'zone', 'Specialist zone', true, (k) => k);
     addChoicesFrom(starnet.startGear || {}, 'startgear', 'StarNet gear', true, (k) => k);
     addChoicesFrom(starnet.perks || {}, 'perk', 'Specialist perk', true, (k) => k);
+
+    // --- PRONOUNS MOVED HERE ---
+    // Added at the very end so it registers successfully after all required choices
+    builder.addStringOption(option => option.setName('pronouns').setDescription('Specialist pronouns (e.g., she/her, they/them)').setRequired(false));
+
     return builder;
   })(),
 

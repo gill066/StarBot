@@ -167,7 +167,7 @@ module.exports = {
 
           // Final verification report back to the orchestrator user reading contents instead of length
           await submission.reply({
-            content: `Episode information set: \n Question: "${question}"\nPeople: ${people.join(', ') || 'None'}\nPlaces: ${places.join(', ') || 'None'}\nThings: ${things.join(', ') || 'None'}\nIdeas: ${ideas.join(', ') || 'None'}`,
+            content: `Episode information set: \n **Question:** "${question}"\n**People:** ${people.join(', ') || 'None'}\n**Places:** ${places.join(', ') || 'None'}\n**Things:** ${things.join(', ') || 'None'}\n**Ideas:** ${ideas.join(', ') || 'None'}`,
             ephemeral: true
           });
 

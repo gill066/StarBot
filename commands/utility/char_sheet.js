@@ -78,14 +78,18 @@ module.exports = {
 
     const zoneFooter = entry.inTheZone ? '\n💫 I N T H E Z O N E 💫' : '';
 
-    const description = `**Home:** ${entry.home}
-**Work:** *${entry.work}*
+    // --- DYNAMIC INJURY DISPLAY ---
+    const injuriesDisplay = Array.isArray(entry.injuries) && entry.injuries.length
+      ? `\n**Injuries:** ${entry.injuries.map(i => `**<${i.classification}>** *${i.mechanicsText}*`).join(', ')}`
+      : '';
+
+    const description = `**Home:** ${entry.home}   **Work:** *${entry.work}*
 **Type:** *${entry.type}*
 **Zone:** ${entry.zone} | **Body:** ${entry.body} | **Mind:** ${entry.mind}
 **Perks:**\n${perksDisplay}
 **Inventory:**\n${inventory}
-**Tags:** *${entry.tags?.join(', ') || 'None'}*
 **Capacity:** ${entry.load || 0} / ${entry.capacity || 0}#
+**Tags:** *${entry.tags?.join(', ') || 'None'}*${injuriesDisplay}
 **XP:** ${entry.xp || 0} | **Rank:** ${entry.rank || 1}${zoneFooter}`;
 
     // Add slot metadata in the embed footer so players know their active list context

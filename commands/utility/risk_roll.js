@@ -483,7 +483,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
             .setLabel((p.Name || p.name || p.key || `Perk ${idx}`).substring(0, 100))
             .setValue(String(idx))
         );
-        placeholderText = 'Select a perk to disable...';
+        placeholderText = 'Select a __perk__ to disable...';
       } 
       else if (targetedKey === 'limb') {
         const currentItems = targetCharacter.inventory || [];
@@ -492,7 +492,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
             .setLabel((item.Name || item.name || item.key || `Item ${idx}`).substring(0, 100))
             .setValue(String(idx))
         );
-        placeholderText = 'Select an item to destroy...';
+        placeholderText = 'Select an **item** to destroy...';
       } 
       else if (targetedKey === 'strain') {
         const activeTags = targetCharacter.tags || [];
@@ -501,7 +501,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
             .setLabel(tag.substring(0, 100))
             .setValue(String(idx))
         );
-        placeholderText = 'Select a tag to disable...';
+        placeholderText = 'Select a *tag* to disable...';
       }
 
       // Fallback logic for empty array contexts
@@ -531,7 +531,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
 
       // Transition the view to show the select dropdown menu layout smoothly
       await i.update({
-        content: `🚨 **Injury Mechanics Choice Required:** You selected **<${userChoiceMatch.label}>**. Please declare your casualty loss below:`,
+        content: `You selected **<${userChoiceMatch.label}>**. Which <injury> do you take?`,
         components: [dropdownRow]
       });
     }
@@ -541,9 +541,9 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
       const targetedKey = i.customId.replace('injury_dropdown_', '');
       const labelMap = { brain: 'Brain', limb: 'Limb', strain: 'Strain' };
       const descMap = {
-        brain: 'Suffer cognitive fog. Lose access to a perk.',
-        limb: 'Critically fumble. Destroy one item.',
-        strain: 'Forget yourself. Lose access to a tag.'
+        brain: 'Suffer cognitive fog. Lose access to a __perk__.',
+        limb: 'Critically fumble. Destroy one **item.**',
+        strain: 'Forget yourself. Lose access to a *tag.*'
       };
 
       let finalDb = {};
@@ -578,21 +578,21 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
           targetedPerk.inactive = true;
           targetedPerk.brainInjury = true;
           finalChar.inactivePerks.push(targetedPerk);
-          systemicAnnouncementDetail = `Disabling Perk: **${targetedPerk.Name || targetedPerk.name || targetedPerk.key}**`;
+          systemicAnnouncementDetail = `__${targetedPerk.Name || targetedPerk.name || targetedPerk.key}__ disabled.`;
         }
       } 
       else if (targetedKey === 'limb') {
         if (finalChar.inventory && finalChar.inventory[selectedIndex]) {
           const [destroyedItem] = finalChar.inventory.splice(selectedIndex, 1);
           finalChar.inactiveItems.push(destroyedItem);
-          systemicAnnouncementDetail = `Destroyed Item: **${destroyedItem.Name || destroyedItem.name || destroyedItem.key}**`;
+          systemicAnnouncementDetail = `**${destroyedItem.Name || destroyedItem.name || destroyedItem.key}** destroyed.`;
         }
       } 
       else if (targetedKey === 'strain') {
         if (finalChar.tags && finalChar.tags[selectedIndex]) {
           const [disabledTag] = finalChar.tags.splice(selectedIndex, 1);
           finalChar.inactiveTags.push(disabledTag);
-          systemicAnnouncementDetail = `Disabling Tag: ***${disabledTag}***`;
+          systemicAnnouncementDetail = `*${disabledTag}* disabled.`;
         }
       }
 
@@ -604,7 +604,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
 
       // Confirm visually to the user that the selection cleared out successfully
       await i.update({
-        content: `**Injury Sustained:** ${systemicAnnouncementDetail}`,
+        content: `<Injury> sustained: ${systemicAnnouncementDetail}`,
         components: []
       });
 

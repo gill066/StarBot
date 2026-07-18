@@ -86,12 +86,12 @@ module.exports = {
       : 'None';
 
     // Build the scannable system log printout
-    const content = `**${entry.name}:**\n\n` +
-                    `***Tags*:** ${tagsList}\n` +
-                    `**Items** : ${itemsList}\n` +
-                    `**___Perks___** : ${perksList}\n` + 
-                    `**<Injuries>:** ${injuriesList}\n` +
-                    `**+Memories+:** ${memoriesList}`;
+    const content = `**${entry.name}**:\n\n` +
+                    `***Tags***: ${tagsList}\n` +
+                    `**Items**: ${itemsList}\n` +
+                    `**___Perks___**: ${perksList}\n` + 
+                    `**<Injuries>**: ${injuriesList}\n` +
+                    `**+Memories+**: ${memoriesList}`;
 
     // Dispatches response view matching user's visibility preferences
     await replySafely(interaction, {

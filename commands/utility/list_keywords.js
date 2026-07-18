@@ -86,7 +86,7 @@ module.exports = {
       : 'None';
 
     // Build the scannable system log printout
-    const content = `**${entry.name}**:\n\n` +
+    const content = `**${entry.name}**:\n` +
                     `***Tags***: ${tagsList}\n` +
                     `**Items**: ${itemsList}\n` +
                     `**___Perks___**: ${perksList}\n` + 

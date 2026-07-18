@@ -446,6 +446,10 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
       if (!isBody || targetedKey === 'core') {
         targetCharacter.injuries.push(injuryLogEntry);
 
+        // --- ADDED: Increment load case-insensitively ---
+        const loadKey = Object.keys(targetCharacter).find(k => k.toUpperCase() === 'LOAD') || 'load';
+        targetCharacter[loadKey] = Number(targetCharacter[loadKey] ?? 0) + 1;
+
         if (targetedKey === 'core') {
           targetCharacter.coreInjury = true;
           const capacityKey = Object.keys(targetCharacter).find(k => k.toUpperCase() === 'CAPACITY') || 'capacity';
@@ -460,12 +464,12 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         }
 
         await i.update({
-          content: `Injury Sustained: **<${userChoiceMatch.label}>**`,
+          content: `Injury Sustained: **<${userChoiceMatch.label}>** (+1 Load applied)`,
           components: []
         });
 
         await interaction.followUp({
-          content: `💥 **${targetCharacter.name}** has sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`! *(${userChoiceMatch.desc})*`
+          content: `💥 **${targetCharacter.name}** has sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`! *(${userChoiceMatch.desc})*\n⚠️ **Encumbrance Added:** +1 Load applied.`
         });
 
         collector.stop();
@@ -507,16 +511,21 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
       // Fallback logic for empty array contexts
       if (dropdownOptions.length === 0) {
         targetCharacter.injuries.push(injuryLogEntry);
+
+        // --- ADDED: Increment load case-insensitively ---
+        const loadKey = Object.keys(targetCharacter).find(k => k.toUpperCase() === 'LOAD') || 'load';
+        targetCharacter[loadKey] = Number(targetCharacter[loadKey] ?? 0) + 1;
+
         try {
           fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
         } catch (err) {}
 
         await i.update({
-          content: `Injury Sustained: **<${userChoiceMatch.label}>** (No assets available to lose)`,
+          content: `Injury Sustained: **<${userChoiceMatch.label}>** (No assets available to lose, +1 Load applied)`,
           components: []
         });
         await interaction.followUp({
-          content: `💥 **${targetCharacter.name}** sustained a **${target} Injury**: \`<${userChoiceMatch.label}>\`! However, no active assets were available to lose.`
+          content: `${targetCharacter.name} sustained a ${target} <injury>: \`<${userChoiceMatch.label}>\`! However, no active assets were available to lose.\n⚠️ **Encumbrance Added:** +1 Load applied.`
         });
         collector.stop();
         return;
@@ -531,7 +540,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
 
       // Transition the view to show the select dropdown menu layout smoothly
       await i.update({
-        content: `You selected **<${userChoiceMatch.label}>**. Which <injury> do you take?`,
+        content: `You selected **<${userChoiceMatch.label}>**. Which asset do you sacrifice?`,
         components: [dropdownRow]
       });
     }
@@ -567,6 +576,10 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
         loggedAt: new Date().toISOString()
       });
 
+      // --- ADDED: Increment load case-insensitively ---
+      const loadKey = Object.keys(finalChar).find(k => k.toUpperCase() === 'LOAD') || 'load';
+      finalChar[loadKey] = Number(finalChar[loadKey] ?? 0) + 1;
+
       finalChar.inactivePerks = finalChar.inactivePerks || [];
       finalChar.inactiveItems = finalChar.inactiveItems || [];
       finalChar.inactiveTags = finalChar.inactiveTags || [];
@@ -578,21 +591,21 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
           targetedPerk.inactive = true;
           targetedPerk.brainInjury = true;
           finalChar.inactivePerks.push(targetedPerk);
-          systemicAnnouncementDetail = `__${targetedPerk.Name || targetedPerk.name || targetedPerk.key}__ disabled.`;
+          systemicAnnouncementDetail = `__${targetedPerk.Name || targetedPerk.name || targetedPerk.key}__ disabled`;
         }
       } 
       else if (targetedKey === 'limb') {
         if (finalChar.inventory && finalChar.inventory[selectedIndex]) {
           const [destroyedItem] = finalChar.inventory.splice(selectedIndex, 1);
           finalChar.inactiveItems.push(destroyedItem);
-          systemicAnnouncementDetail = `**${destroyedItem.Name || destroyedItem.name || destroyedItem.key}** destroyed.`;
+          systemicAnnouncementDetail = `**${destroyedItem.Name || destroyedItem.name || destroyedItem.key}** destroyed`;
         }
       } 
       else if (targetedKey === 'strain') {
         if (finalChar.tags && finalChar.tags[selectedIndex]) {
           const [disabledTag] = finalChar.tags.splice(selectedIndex, 1);
           finalChar.inactiveTags.push(disabledTag);
-          systemicAnnouncementDetail = `*${disabledTag}* disabled.`;
+          systemicAnnouncementDetail = `*${disabledTag}* disabled`;
         }
       }
 
@@ -604,12 +617,12 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
 
       // Confirm visually to the user that the selection cleared out successfully
       await i.update({
-        content: `<Injury> sustained: ${systemicAnnouncementDetail}`,
+        content: `<Injury> sustained: ${systemicAnnouncementDetail} (+1 Load applied)`,
         components: []
       });
 
       await interaction.followUp({
-        content: `${finalChar.name} has sustained a **${target} Injury**: \`<${labelMap[targetedKey]}>\`!\n⚠️ **Consequence Applied:** ${systemicAnnouncementDetail}.`
+        content: `${finalChar.name} has sustained a **${target} Injury**: \`<${labelMap[targetedKey]}>\`!\n⚠️ **Consequences Applied:** ${systemicAnnouncementDetail} (+1 Load applied).`
       });
 
       collector.stop();

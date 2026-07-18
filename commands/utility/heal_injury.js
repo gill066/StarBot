@@ -106,7 +106,7 @@ module.exports = {
             delete mainPerk.inactive;
             delete mainPerk.brainInjury;
           }
-          resolutionText = `Regained **${name}**`;
+          resolutionText = `Regained ${name}`;
         } else {
           resolutionText = 'Cognitive fog dissipated (no disabled perks found to return).';
         }
@@ -145,6 +145,14 @@ module.exports = {
         resolutionText = `\`<${chosenInjury.classification}>\` has been treated.`;
       }
 
+      // === DECREMENT LOAD BY 1 ===
+      const loadKey = Object.keys(activeChar).find(k => k.toUpperCase() === 'LOAD') || 'load';
+      if (activeChar[loadKey] !== undefined) {
+        // Keeps it safe from dropping below 0 defensively
+        activeChar[loadKey] = Math.max(0, Number(activeChar[loadKey] ?? 0) - 1);
+        resolutionText += ` | LOAD decreased to **${activeChar[loadKey]}**`;
+      }
+
       // Remove the specific injury index object cleanly from the active list tracking array
       activeChar.injuries.splice(selectedIndex, 1);
 
@@ -157,7 +165,7 @@ module.exports = {
 
       // Clear the menu for the user privately
       await menuInteraction.update({
-        content: `Healed **<${chosenInjury.classification}>`,
+        content: `Healed <${chosenInjury.classification}>`,
         components: []
       });
 

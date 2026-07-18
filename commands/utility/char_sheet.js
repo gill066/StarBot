@@ -66,8 +66,11 @@ module.exports = {
         }).join('\n')
       : 'None';
 
-    const perksDisplay = Array.isArray(entry.perks) && entry.perks.length
-      ? entry.perks.map(p => {
+    // --- FIXED: Filter out perks where inactive is true ---
+    const activePerks = Array.isArray(entry.perks) ? entry.perks.filter(p => !p.inactive) : [];
+
+    const perksDisplay = activePerks.length
+      ? activePerks.map(p => {
           const name = p.Name || p.name || p.key || 'Unknown';
           const desc = p.Description || p.description || 'No description available.';
           const uses = p.Uses != null ? p.Uses : null;

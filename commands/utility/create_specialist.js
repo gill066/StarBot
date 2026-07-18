@@ -10,7 +10,9 @@ module.exports = {
     const builder = new SlashCommandBuilder()
       .setName('create_specialist')
       .setDescription('Create a new StarNet specialist')
-      .addStringOption(option => option.setName('name').setDescription('Specialist name').setRequired(true));
+      .addStringOption(option => option.setName('name').setDescription('Specialist name').setRequired(true))
+      // --- NEW PRONOUNS OPTION ---
+      .addStringOption(option => option.setName('pronouns').setDescription('Specialist pronouns (e.g., she/her, they/them)').setRequired(false));
 
     const addChoicesFrom = (sourceObj, optionName, description, required, labelFn) => {
       try {
@@ -53,6 +55,7 @@ module.exports = {
 
   async execute(interaction) {
     const name = interaction.options.getString('name');
+    const pronouns = interaction.options.getString('pronouns'); // Fetch the optional pronouns string
     const home = interaction.options.getString('home');
     const work = interaction.options.getString('work');
     const type = interaction.options.getString('type');
@@ -146,6 +149,7 @@ module.exports = {
     // --- NEW CHARACTER PACKAGING ---
     const newCharacter = {
       name,
+      pronouns, // Pushed to the JSON database
       home,
       work,
       tags,

@@ -91,8 +91,11 @@ module.exports = {
     // Add slot metadata in the embed footer so players know their active list context
     const slotCount = userEntry.characters.length;
 
+    // --- CONDITIONALLY ADD PRONOUNS TO TITLE ---
+    const embedTitle = entry.pronouns ? `${entry.name} (${entry.pronouns})` : entry.name;
+
     const embed = new EmbedBuilder()
-      .setTitle(entry.name)
+      .setTitle(embedTitle)
       .setDescription(description)
       .setFooter({ text: `Active Slot: ${userEntry.activeIndex + 1} / ${slotCount} (Max 5)` });
 

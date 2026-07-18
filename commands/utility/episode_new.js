@@ -13,8 +13,8 @@ const path = require('path');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('showrunner')
-    .setDescription('Set up the showrunner prompt details for this channel.'),
+    .setName('episode_new')
+    .setDescription('Set up a new episode for this channel.'),
 
   async execute(interaction) {
     const dataPath = path.join(__dirname, '..', '..', 'showrunner_data.json');

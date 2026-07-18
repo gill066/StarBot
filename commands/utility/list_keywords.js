@@ -6,10 +6,10 @@ const { replySafely } = require('../../utils/interaction');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('list_keywords')
-    .setDescription("Produces a clean list of all your character's Tags, Items, Perks, Injuries, and Memories.")
+    .setDescription("Produces a list of all your character's tags, items, perks, injuries, and memories.")
     .addBooleanOption(option =>
       option.setName('public')
-        .setDescription('Set to true to display this list publicly to the channel instead of privately.')
+        .setDescription('Share your {keyword} list publicly?.')
         .setRequired(false)
     ),
 
@@ -31,7 +31,7 @@ module.exports = {
     let userEntry = db[userId];
 
     if (!userEntry) {
-      await replySafely(interaction, { content: '❌ No profile found for you. Create a specialist first.', ephemeral: true });
+      await replySafely(interaction, { content: 'No profile found for you. Create a specialist first.', ephemeral: true });
       return;
     }
 
@@ -53,7 +53,7 @@ module.exports = {
     // --------------------------------------------------------
 
     if (!userEntry.characters || userEntry.characters.length === 0) {
-      await replySafely(interaction, { content: '❌ No specialists found in your database profile.', ephemeral: true });
+      await replySafely(interaction, { content: 'No specialists found in your database profile.', ephemeral: true });
       return;
     }
 
@@ -87,11 +87,11 @@ module.exports = {
 
     // Build the scannable system log printout
     const content = `**${entry.name}:**\n\n` +
-                    `*   ***Tags*:** ${tagsList}\n` +
-                    `*   **__Items__** : ${itemsList}\n` +
-                    `*   **___Perks___** : ${perksList}\n` + 
-                    `*   **<Injuries>:** ${injuriesList}\n` +
-                    `*   **+Memories+:** ${memoriesList}`;
+                    `***Tags*:** ${tagsList}\n` +
+                    `**Items** : ${itemsList}\n` +
+                    `**___Perks___** : ${perksList}\n` + 
+                    `**<Injuries>:** ${injuriesList}\n` +
+                    `**+Memories+:** ${memoriesList}`;
 
     // Dispatches response view matching user's visibility preferences
     await replySafely(interaction, {

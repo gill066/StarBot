@@ -432,7 +432,7 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
                 });
 
                 await interaction.followUp({
-                  content: `${dChar.name} dies. A backup of their consciousness is placed in a refabricated body at the Node.\nAttributes reset to baseline (BODY: **${dChar[bodyKey]}**, MIND: **${dChar[mindKey]}**)\n• All \`<injuries>\` removed.\n• Gained items dropped (retained original 2 starter items).\n• All custom \`+memories+\` forgotten.${rankLostText}`
+                  content: `${dChar.name} dies. A backup of their consciousness is placed in a refabricated body at the Node.\n• Attributes reset to baseline (BODY: **${dChar[bodyKey]}**, MIND: **${dChar[mindKey]}**)\n• All \`<injuries>\` removed.\n• Gained items dropped (retained original 2 starter items).\n• All custom \`+memories+\` forgotten.${rankLostText}`
                 });
               }
             });

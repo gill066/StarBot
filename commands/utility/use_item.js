@@ -86,7 +86,14 @@ module.exports = {
     savePlayerData(file, db);
     
     const usesAlert = item.Uses < 0 ? '(Unlimited)' : `(${item.Uses}↺ remaining)`;
-    await replySafely(interaction, { content: `**${activeCharacter.name}** used **${item.Name}** ${usesAlert}.\n*${item.Use}*`, ephemeral: false });
+    let responseContent = `**${activeCharacter.name}** used **${item.Name}** ${usesAlert}.\n*${item.Use}*`;
+
+    // --- MEDKIT SPECIAL CONDITION CHECK ---
+    if (item.Name.toLowerCase() === 'medkit') {
+      responseContent += '\n\nThe player this item is being used on should run the `/heal_injury` command.';
+    }
+
+    await replySafely(interaction, { content: responseContent, ephemeral: false });
   },
 
   async autocomplete(interaction) {
@@ -116,4 +123,3 @@ module.exports = {
     await interaction.respond(choices);
   },
 };
- 

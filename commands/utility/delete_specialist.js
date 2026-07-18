@@ -73,7 +73,7 @@ module.exports = {
     }
 
     if (!db[userId] || !db[userId].characters || db[userId].characters.length === 0) {
-      return await replySafely(interaction, { content: "❌ You have no character profiles to delete.", ephemeral: true });
+      return await replySafely(interaction, { content: "You have no character profiles to delete.", ephemeral: true });
     }
 
     // 1. Locate character to delete
@@ -83,7 +83,7 @@ module.exports = {
 
     if (targetIndex === -1) {
       return await replySafely(interaction, { 
-        content: `❌ Could not find a specialist named "${targetName}". Please select from the dropdown.`, 
+        content: `Could not find a specialist named "${targetName}". Please select from the dropdown.`, 
         ephemeral: true 
       });
     }
@@ -109,13 +109,13 @@ module.exports = {
     try {
       fs.writeFileSync(file, JSON.stringify(db, null, 2), 'utf8');
       
-      let followUpText = `\n🔄 Your active profile has been reset to **${db[userId].characters[db[userId].activeIndex]?.name}**.`;
+      let followUpText = `\nYour active profile has been reset to **${db[userId].characters[db[userId].activeIndex]?.name}**.`;
       if (db[userId].characters.length === 0) {
-        followUpText = `\n⚠️ You now have **0** active profiles. Use \`/create_specialist\` to play again.`;
+        followUpText = `\nYou now have **0** active profiles. Use \`/create_specialist\` to create a new specialist.`;
       }
 
       await replySafely(interaction, { 
-        content: `🗑️ Successfully deleted specialist profile: **${deletedName}**.${followUpText}`, 
+        content: `Successfully deleted specialist profile: **${deletedName}**.${followUpText}`, 
         ephemeral: false 
       });
     } catch (err) {

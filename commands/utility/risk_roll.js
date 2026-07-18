@@ -280,7 +280,7 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
   const attributeScore = Number(activeCharacter[attrKey] ?? 0);
 
   const injuryRoll = Math.floor(Math.random() * 6) + 1;
-  const baseLogString = `⚠️ **Risk Roll Failure!** Checking for fallback protection... rolled a **${injuryRoll}** against your **${target}** score of **${attributeScore}**.`;
+  const baseLogString = `You failed the risk roll... then you rolled a **[${injuryRoll}]** against your **${target}** score of **${attributeScore}**.`;
 
   if (injuryRoll <= attributeScore) {
     await presentInjuryChoices(interaction, target, dataPath, userId, baseLogString);
@@ -297,7 +297,7 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
     );
 
     const promptMessage = await interaction.followUp({
-      content: `${baseLogString}\n\nYou rolled *above* your attribute threshold! Would you like to **Tough It Out** or choose to take an **Injury condition** directly?`,
+      content: `${baseLogString}\n\nYou rolled *above* your attribute. Would you like to **Tough It Out** or choose to take an **Injury condition** directly?`,
       components: [row],
       ephemeral: true
     });
@@ -337,7 +337,7 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
             );
 
             const deathPrompt = await btnInteraction.update({
-              content: `💀 **CRITICAL THRESHOLD REACHED:** Reducing your **${target}** score to 0 will cause **${freshChar.name}** to DIE!\n\nAre you sure you want to proceed? This will trigger a character rebirth, resetting stats, removing memories, and stripping down equipment back to character creation baselines.`,
+              content: `**Danger -** Reducing your **${target}** score to 0 will cause **${freshChar.name}** to die and be refabricated at the Node!\n\nAre you sure you want to proceed? This will reset stats, remove +memories+, and lose any equipment found in this mission.`,
               components: [deathRow]
             });
 
@@ -355,7 +355,7 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
               if (deathInteraction.customId === 'death_confirm_no') {
                 deathCollector.stop();
                 // Route them back into picking an injury asset instead of dying
-                await presentInjuryChoices(interaction, target, dataPath, userId, `❤️ You chose to preserve your life! You must select an injury profile alignment instead:`, deathInteraction);
+                await presentInjuryChoices(interaction, target, dataPath, userId, `Having chosen to live, you must select an injury profile alignment instead:`, deathInteraction);
                 return;
               }
 
@@ -432,7 +432,8 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
                 });
 
                 await interaction.followUp({
-                  content: `🚨 💀 **CHARACTER DEATH & REBIRTH** 💀 🚨\n**${dChar.name}** pushed their body to the absolute limit and has **DIED**!\n\nRe-stabilizing neural pathways and cloning metrics:\n• Attributes reset to baseline coordinates (BODY: **${dChar[bodyKey]}**, MIND: **${dChar[mindKey]}**)\n• All \`<injuries>\` and status penalties completely removed.\n• Extraneous equipment dropped (retained original 2 starter items).\n• All custom \`+memories+\` forgotten.${rankLostText}\n\n*A fresh echo steps out from the recovery pod...*`
+                  content: `💀 **CHARACTER DEATH & REBIRTH** 💀 🚨\n**${dChar.name}** dies. A backup of their consciousness is placed in a refabricated body at the Node.
+                  Attributes reset to baseline (BODY: **${dChar[bodyKey]}**, MIND: **${dChar[mindKey]}**)\n• All \`<injuries>\` removed.\n• Gained items dropped (retained original 2 starter items).\n• All custom \`+memories+\` forgotten.${rankLostText}`
                 });
               }
             });
@@ -444,12 +445,12 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
           fs.writeFileSync(dataPath, JSON.stringify(freshDb, null, 2), 'utf8');
 
           await btnInteraction.update({
-            content: `🛡️ **Tough It Out Selected:** Your permanent ${target} score was reduced from **${oldScore}** down to **${freshChar[attrKey]}**.`,
+            content: `**Tough It Out Selected:**`,
             components: []
           });
 
           await interaction.followUp({
-            content: `🛡️ **${freshChar.name}** grits their teeth and decides to **Tough It Out**! Their ${target} score drops to **${freshChar[attrKey]}**.`
+            content: `${freshChar.name} **toughs it out**! Their ${target} score drops to **${freshChar[attrKey]}**.`
           });
         } catch (err) {
           console.error('Failed processing mitigation deductions securely', err);
@@ -487,7 +488,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
     )
   );
 
-  const finalPromptContent = `${statusContext}\n\n🚨 **Select your preferred Injury Profile alignment:**\n` + 
+  const finalPromptContent = `${statusContext}\n\nChoose an <injury>\n` + 
     rulesMap.map(i => `• **<${i.label}>**: ${i.desc}`).join('\n');
 
   if (operationalButtonInteraction) {
@@ -706,7 +707,7 @@ async function presentInjuryChoices(interaction, target, dataPath, userId, statu
       });
 
       await interaction.followUp({
-        content: `${finalChar.name} has sustained a ${target} <injury> \`<${labelMap[targetedKey]}>\`!\n⚠️ **Consequences Applied:** ${systemicAnnouncementDetail} (+1 Load applied).`
+        content: `${finalChar.name} has sustained a ${target} <injury> \`<${labelMap[targetedKey]}>\`!\${systemicAnnouncementDetail} (+1 Load applied).`
       });
 
       collector.stop();

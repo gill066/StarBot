@@ -202,7 +202,7 @@ module.exports = {
 
           // Update interaction screen context to clear out inputs cleanly
           await menuInteraction.update({
-            content: `+Memory+ Locked! Spent 5 XP to remember \`+${selectedMemoryItem.name}+\` (${selectedMemoryItem.type}). Remaining XP: **${activeChar[targetXpKey]}**.`,
+            content: `+Memory+ added! Spent 5 XP to remember \`+${selectedMemoryItem.name}+\` (${selectedMemoryItem.type}). Remaining XP: **${activeChar[targetXpKey]}**.`,
             components: []
           });
 

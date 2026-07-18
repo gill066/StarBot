@@ -150,7 +150,7 @@ module.exports = {
       if (activeChar[loadKey] !== undefined) {
         // Keeps it safe from dropping below 0 defensively
         activeChar[loadKey] = Math.max(0, Number(activeChar[loadKey] ?? 0) - 1);
-        resolutionText += ` | # decreased to ${activeChar[loadKey]}`;
+        resolutionText += ` | Injury load removed.`;
       }
 
       // Remove the specific injury index object cleanly from the active list tracking array

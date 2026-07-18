@@ -36,7 +36,7 @@ module.exports = {
     // 1. Check if data exists for this channel (always ephemeral)
     if (!channelData) {
       await interaction.reply({
-        content: '❌ No episode information has been configured for this channel yet.',
+        content: 'No episode information has been configured for this channel yet.',
         ephemeral: true
       });
       return;
@@ -45,7 +45,7 @@ module.exports = {
     // 2. Security Check: Compare the executing user's ID against the stored creator's ID (always ephemeral)
     if (channelData.userId !== currentUserId) {
       await interaction.reply({
-        content: `❌ Access Denied. Only the user who initialized this episode configuration (**${channelData.updatedBy || 'Unknown Showrunner'}**) can view this data.`,
+        content: `Access Denied. Only the user who initialized this episode configuration (**${channelData.updatedBy || 'Unknown Showrunner'}**) can view this data.`,
         ephemeral: true
       });
       return;
@@ -61,7 +61,7 @@ module.exports = {
 
     // 4. Send the breakdown (visbility toggled by the 'public' choice)
     await interaction.reply({
-      content: `🎬 **Active Showrunner Log for this Channel:**\n\n` +
+      content: `**Episode info for this Channel:**\n\n` +
                `**Question:** "${question}"\n` +
                `**People:** ${formattedPeople || 'None'}\n` +
                `**Places:** ${formattedPlaces || 'None'}\n` +

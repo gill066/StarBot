@@ -427,7 +427,7 @@ async function runInjurySequence(interaction, target, dataPath, userId, zoneValu
                 fs.writeFileSync(dataPath, JSON.stringify(dDb, null, 2), 'utf8');
 
                 await deathInteraction.update({
-                  content: `💀 **${dChar.name}** has passed away and been successfully reset to baseline.`,
+                  content: `**${dChar.name}** dies.`,
                   components: []
                 });
 

@@ -1,15 +1,14 @@
 const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { replySafely } = require('../../utils/interaction');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('add_episode_data')
-    .setDescription('Add entries to the current episode log.')
+    .setDescription('Add a new piece of lore to the current channel\'s active episode.')
     .addStringOption(option =>
       option.setName('category')
-        .setDescription('The category of lore you are updating')
+        .setDescription('The lore database category to update')
         .setRequired(true)
         .addChoices(
           { name: 'People', value: 'people' },
@@ -20,63 +19,73 @@ module.exports = {
     )
     .addStringOption(option =>
       option.setName('entry')
-        .setDescription('The text details you want to add to this category')
+        .setDescription('The text item or detail to add')
         .setRequired(true)
     ),
 
   async execute(interaction) {
     const category = interaction.options.getString('category');
-    const entry = interaction.options.getString('entry');
+    const entry = interaction.options.getString('entry').trim();
     
-    // Adjust this path if your episode data file lives elsewhere
-    const dataPath = path.join(__dirname, '..', '..', 'showrunner_data.json');    
-    const userId = interaction.user.id;
+    const dataPath = path.join(__dirname, '..', '..', 'showrunner_data.json');
+    const channelId = interaction.channelId;
+    const currentUserId = interaction.user.id;
 
-    let episodeDb = {};
+    let db = {};
+
+    // 1. Load the database safely
     try {
       if (fs.existsSync(dataPath)) {
         const raw = fs.readFileSync(dataPath, 'utf8');
-        episodeDb = raw.trim() ? JSON.parse(raw) : {};
-      } else {
-        // Fallback initialization if the file does not exist yet
-        episodeDb = { authorId: userId, people: [], places: [], things: [], ideas: [] };
+        db = raw.trim() ? JSON.parse(raw) : {};
       }
     } catch (e) {
-      console.error('Failed to read episode data file', e);
-      await replySafely(interaction, { content: 'Critical error reading the lore database.', ephemeral: true });
+      console.error('Failed to read showrunner database file:', e);
+      await interaction.reply({ content: 'Critical error accessing the showrunner file.', ephemeral: true });
       return;
     }
 
-    // 1. Author Security Verification
-    // Checks if the executing user matches the assigned author of the current episode file
-    if (episodeDb.authorId && episodeDb.authorId !== userId) {
-      await replySafely(interaction, { 
-        content: `**Sorry.** Showrunners only. <@${episodeDb.authorId}> is the showrunner of this episode.`, 
-        ephemeral: true 
+    // 2. Verify an episode actually exists for this channel
+    if (!db[channelId]) {
+      await interaction.reply({
+        content: '**No Episode Found:** There is no active episode set up for this channel. Use `/episode_new` to build one first.',
+        ephemeral: true
       });
       return;
     }
 
-    // 2. Ensure target array structures are instantiated safely
-    if (!Array.isArray(episodeDb[category])) {
-      episodeDb[category] = [];
-    }
+    const channelEpisode = db[channelId];
 
-    // 3. Commit data string changes
-    episodeDb[category].push(entry);
-
-    // Save state back to the disk database securely
-    try {
-      fs.writeFileSync(dataPath, JSON.stringify(episodeDb, null, 2), 'utf8');
-    } catch (e) {
-      console.error('Failed to write updated arrays back to episode data file', e);
-      await replySafely(interaction, { content: 'Failed to save updates to the data file.', ephemeral: true });
+    // 3. Confirm execution authority against the stored userId
+    if (channelEpisode.userId !== currentUserId) {
+      await interaction.reply({
+        content: `**Sorry:** Showrunners only. <@${channelEpisode.userId}> can update info for this episode.`,
+        ephemeral: true
+      });
       return;
     }
 
-    // 4. Ephemeral user notification loop confirmation
-    await replySafely(interaction, {
-      content: `Successfully added *"${entry}"* to this episode's ${category.toUpperCase()}.`,
+    // 4. Ensure the targeted category array exists safely
+    if (!Array.isArray(channelEpisode[category])) {
+      channelEpisode[category] = [];
+    }
+
+    // 5. Append the entry and track updates
+    channelEpisode[category].push(entry);
+    channelEpisode.timestamp = new Date().toISOString(); // Keep historical updates accurate
+
+    // 6. Commit the final state changes back to disk
+    try {
+      fs.writeFileSync(dataPath, JSON.stringify(db, null, 2), 'utf8');
+    } catch (e) {
+      console.error('Failed to save lore update back to file:', e);
+      await interaction.reply({ content: 'File tracking error: changes could not be saved.', ephemeral: true });
+      return;
+    }
+
+    // 7. Send the private ephemeral update message
+    await interaction.reply({
+      content: `*"${entry}"* added to to this episode's **${category.toUpperCase()}**.\n\n>`,
       ephemeral: true
     });
   }

@@ -188,7 +188,7 @@ module.exports = {
     btnCollector.on('end', async (collected, reason) => {
       if (reason === 'time' && collected.size === 0) {
         await interaction.editReply({
-          content: '⏳ Confirmation window timed out without changes.',
+          content: 'Confirmation window timed out without changes.',
           components: []
         }).catch(() => {});
       }

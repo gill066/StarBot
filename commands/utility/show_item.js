@@ -69,11 +69,12 @@ module.exports = {
 
     const usesRemaining = item.Uses < 0 ? 'Unlimited' : item.Uses;
     const maxUses = item.MaxUses < 0 ? 'Unlimited' : item.MaxUses;
+    const usesStatement = item.MaxUses < 0 ? '' : `**Uses Remaining:** ${usesRemaining}/${maxUses}↺`;
     const details = [
       `**Name:** ${item.Name}`,
       `**Function:** ${item.Use}`,
       `**Weight:** ${item.Weight}#`,
-      `**Uses Remaining:** ${usesRemaining}/${maxUses}↺`,
+      `${usesStatement}`,
     ].join('\n');
 
     await replySafely(interaction, { content: details, ephemeral: false });

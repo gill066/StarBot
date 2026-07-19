@@ -85,7 +85,7 @@ module.exports = {
 
     // 7. Send the private ephemeral update message
     await interaction.reply({
-      content: `*"${entry}"* added to to this episode's **${category.toUpperCase()}**.\n\n>`,
+      content: `*"${entry}"* added to to this episode's **${category.toUpperCase()}**.>`,
       ephemeral: true
     });
   }

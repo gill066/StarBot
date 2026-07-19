@@ -49,18 +49,18 @@ module.exports = {
 
     // Predefined registry of stock items normalized for simple matching
     const stockItems = {
-      "battery pack": { Name: "Battery pack", Use: "Refill charges on StarNet devices", Weight: 1, Uses: 1, MaxUses: 1, CapChange: 0 },
+      "battery pack": { Name: "Battery pack", Use: "Refill ↺ on StarNet devices", Weight: 1, Uses: 1, MaxUses: 1, CapChange: 0 },
       "ansible radio": { Name: "Ansible radio", Use: "Communicate long-distance", Weight: 1, Uses: -1, MaxUses: -1, CapChange: 0 },
       "bubble shield": { Name: "Bubble shield", Use: "Emit temporary forcefield", Weight: 2, Uses: 1, MaxUses: 1, CapChange: 0 },
       "emergency relay": { Name: "Emergency relay", Use: "Teleport team to Node", Weight: 2, Uses: 1, MaxUses: 1, CapChange: 0 },
       "matter fabricator": { Name: "Matter fabricator", Use: "Print .fab blueprints", Weight: 3, Uses: 2, MaxUses: 2, CapChange: 0 },
-      "carry rig": { Name: "Carry rig", Use: "Add 3 units to carrying capacity", Weight: 0, Uses: -1, MaxUses: -1, CapChange: 3 },
+      "carry rig": { Name: "Carry rig", Use: "Add 3# to carrying capacity", Weight: 0, Uses: -1, MaxUses: -1, CapChange: 3 },
       "translator": { Name: "Translator", Use: "Understand non-Basic languages", Weight: 1, Uses: -1, MaxUses: -1, CapChange: 0 },
-      "exosuit": { Name: "Exosuit", Use: "Traverse hazards. 1 charge per hour", Weight: 3, Uses: 6, MaxUses: 6, CapChange: 0 },
-      "drone": { Name: "Drone", Use: "Do tasks from afar. 1 charge per task", Weight: 2, Uses: 3, MaxUses: 3, CapChange: 0 },
-      "scanner": { Name: "Scanner", Use: "Scan targets. 1 charge to collect data", Weight: 1, Uses: 3, MaxUses: 3, CapChange: 0 },
-      "medkit": { Name: "Medkit", Use: "Fix injuries. 1 charge per injury healed", Weight: 3, Uses: 3, MaxUses: 3, CapChange: 0 },
-      "coilgun": { Name: "Coilgun", Use: "Magnetic SMG. 1 charge to injure or kill", Weight: 2, Uses: 6, MaxUses: 6, CapChange: 0 }
+      "exosuit": { Name: "Exosuit", Use: "Traverse hazards. 1↺ per hour", Weight: 3, Uses: 6, MaxUses: 6, CapChange: 0 },
+      "drone": { Name: "Drone", Use: "Do tasks from afar. 1↺ per task", Weight: 2, Uses: 3, MaxUses: 3, CapChange: 0 },
+      "scanner": { Name: "Scanner", Use: "Scan targets. 1↺ to collect data", Weight: 1, Uses: 3, MaxUses: 3, CapChange: 0 },
+      "medkit": { Name: "Medkit", Use: "Fix injuries. 1↺ per injury healed", Weight: 3, Uses: 3, MaxUses: 3, CapChange: 0 },
+      "coilgun": { Name: "Coilgun", Use: "Magnetic SMG. 1↺ to injure or kill", Weight: 2, Uses: 6, MaxUses: 6, CapChange: 0 }
     };
 
     const file = path.join(__dirname, '..', '..', 'player_data.json');

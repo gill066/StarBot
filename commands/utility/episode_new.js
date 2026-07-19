@@ -79,28 +79,28 @@ module.exports = {
           .setCustomId('sr_people')
           .setLabel('PEOPLE (separated by commas)')
           .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder('e.g. Alice, Bob, The Blacksmith')
+          .setPlaceholder('e.g. Mork, Spengly Dee, painter-of-black-on-the-skies')
           .setRequired(false);
 
         const placesInput = new TextInputBuilder()
           .setCustomId('sr_places')
           .setLabel('PLACES (separated by commas)')
           .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder('e.g. The Citadel, Overgrown Tavern, Sector 7')
+          .setPlaceholder('e.g. Taverna Bruta, Node 3382, Petrodiesel City')
           .setRequired(false);
 
         const thingsInput = new TextInputBuilder()
           .setCustomId('sr_things')
           .setLabel('THINGS (separated by commas)')
           .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder('e.g. Plasma Rifle, Ancient Map, Glowing Orb')
+          .setPlaceholder('e.g. Dehydrator, Ancient Map, Fungal Vaccine')
           .setRequired(false);
 
         const ideasInput = new TextInputBuilder()
           .setCustomId('sr_ideas')
           .setLabel('IDEAS (separated by commas)')
           .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder('e.g. Betrayal, Cosmic Dread, Cyberpunk Aesthetics')
+          .setPlaceholder('e.g. Betrayal, Worthiness, Economic manipulation')
           .setRequired(false);
 
         modal.addComponents(
